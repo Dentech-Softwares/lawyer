@@ -29,10 +29,9 @@ $adminNotifications = getAllRows(
      WHERE a.status = 'pending' 
      ORDER BY a.created_at DESC LIMIT 5"
 );
-$unreadAdminNotifications = getRow(
+    $unreadAdminNotifications = getRow(
     "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
 );
-?>
 ?>
 <!DOCTYPE html>
 <html lang="en">

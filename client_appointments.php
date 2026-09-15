@@ -30,8 +30,7 @@ $unreadNotifications = getRow(
 );
 
 // Get user info
-$user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
-?>
+    $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -201,6 +200,13 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
                                      <td><?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 50))); ?><?php echo strlen($apt['message'] ?? '') > 50 ? '...' : ''; ?></td>
                                      <td><span class="status-badge <?php echo $apt['status']; ?>"><?php echo ucfirst($apt['status']); ?></span></td>
                                     <td>
+                                        <?php if($apt['status'] == 'approved' || $apt['status'] == 'completed'): ?>
+                                            <a href="continue_case.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="btn-icon" style="visibility: hidden;"><i class="fas fa-eye"></i></span>
+                                        <?php endif; ?>
                                         <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank">
                                             <i class="fas fa-print"></i>
                                         </a>

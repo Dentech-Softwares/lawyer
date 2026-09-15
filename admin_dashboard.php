@@ -518,7 +518,6 @@ $unreadAdminNotifications = getRow(
             <li><a href="manage_appointments.php"><i class="fas fa-calendar"></i> Appointments</a></li>
             <li><a href="manage_clients.php"><i class="fas fa-users"></i> Clients</a></li>
             <li><a href="manage_documents.php"><i class="fas fa-file-alt"></i> Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> View Website</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </aside>
