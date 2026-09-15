@@ -3,7 +3,7 @@ require_once 'db.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
-    header('Location: admin_login.php');
+    header('Location: login.php');
     exit;
 }
 
@@ -23,6 +23,25 @@ if ($blockFilter === 'blocked') {
 $sql .= " ORDER BY created_at DESC";
 
 $clients = getAllRows($sql, $params);
+
+// Admin header data
+$admin_username = $_SESSION['admin_username'];
+$admin_email = $_SESSION['admin_email'] ?? '';
+$admin_names = explode(' ', $admin_username);
+$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Get admin notifications (pending appointment requests)
+$adminNotifications = getAllRows(
+    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.status = 'pending' 
+     ORDER BY a.created_at DESC LIMIT 5"
+);
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -69,31 +88,25 @@ $clients = getAllRows($sql, $params);
             padding: 2rem 0;
         }
 
-        .sidebar-logo {
+        .sidebar-admin {
             text-align: center;
             padding: 0 1.5rem 2rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             margin-bottom: 1.5rem;
         }
 
-        .sidebar-logo h2 {
+        .sidebar-admin h2 {
             color: var(--white);
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
+            margin-bottom: 0.8rem;
         }
 
-        .sidebar-logo i {
+        .sidebar-admin h2 i {
             color: var(--accent);
-        }
-
-        .sidebar-admin {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
         }
 
         .sidebar-admin img {
@@ -402,12 +415,10 @@ $clients = getAllRows($sql, $params);
     </button>
 
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-        </div>
         <div class="sidebar-admin">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=d4af37&color=1a3a5c" alt="Admin">
-            <h3>Administrator</h3>
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
+            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
+            <h3>Dennis Njenga</h3>
         </div>
         <ul class="sidebar-menu">
             <li><a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
@@ -420,17 +431,7 @@ $clients = getAllRows($sql, $params);
     </aside>
 
     <main class="main-content">
-        <div class="header">
-            <h1><i class="fas fa-users"></i> Manage Clients</h1>
-            <div class="header-actions">
-                <a href="admin_dashboard.php" class="filter-btn">
-                    <i class="fas fa-arrow-left"></i> Back
-                </a>
-                <a href="logout.php" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
+        <?php include 'admin_header.php'; ?>
 
         <div class="filters">
             <div class="filter-buttons">

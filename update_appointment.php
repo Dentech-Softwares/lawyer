@@ -8,7 +8,7 @@ require_once 'db.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
-    header('Location: admin_login.php');
+    header('Location: login.php');
     exit;
 }
 

@@ -84,4 +84,36 @@ function getLastId() {
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
+// Session inactivity timeout: 5 minutes (300 seconds)
+$inactiveLimit = 300;
+
+if (isset($_SESSION['last_activity'])) {
+    $inactiveTime = time() - $_SESSION['last_activity'];
+    if ($inactiveTime > $inactiveLimit) {
+        // Session expired due to inactivity
+        session_unset();
+        session_destroy();
+
+        // Start a new session to store the flash message
+        session_start();
+        $_SESSION['session_expired'] = 'Your session has expired due to inactivity. Please log in again.';
+    }
+}
+
+// Update last activity timestamp
+$_SESSION['last_activity'] = time();
+
+/**
+ * Check if the current session has expired due to inactivity.
+ * Returns true if expired (and redirects), false otherwise.
+ */
+function checkSessionTimeout() {
+    if (isset($_SESSION['session_expired'])) {
+        $expired = $_SESSION['session_expired'];
+        unset($_SESSION['session_expired']);
+        return $expired;
+    }
+    return false;
+}
 ?>

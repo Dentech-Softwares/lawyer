@@ -70,10 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     [$user_id, 'Your appointment has been submitted successfully. We will review it shortly.']
                 );
                 
-                $success = 'Appointment booked successfully! You will receive a notification once reviewed.';
-                
-                // Clear form
-                $full_name = $email = $phone = $case_type = $date = $time = $description = '';
+                // Set flash message and redirect to client dashboard
+                $_SESSION['success'] = 'Appointment booked successfully! You will receive a notification once reviewed.';
+                header("Location: client_dashboard.php");
+                exit();
             } else {
                 $error = 'Failed to book appointment. Please try again.';
             }

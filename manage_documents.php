@@ -2,7 +2,7 @@
 require_once 'db.php';
 
 if (!isset($_SESSION['admin_id'])) {
-    header('Location: admin_login.php');
+    header('Location: login.php');
     exit;
 }
 
@@ -13,6 +13,26 @@ $documents = getAllRows(
      LEFT JOIN appointments a ON d.appointment_id = a.id 
      ORDER BY d.uploaded_at DESC"
 );
+
+// Admin header data
+$admin_username = $_SESSION['admin_username'];
+$admin_email = $_SESSION['admin_email'] ?? '';
+$admin_names = explode(' ', $admin_username);
+$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Get admin notifications (pending appointment requests)
+$adminNotifications = getAllRows(
+    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.status = 'pending' 
+     ORDER BY a.created_at DESC LIMIT 5"
+);
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+);
+?>
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,11 +67,9 @@ $documents = getAllRows(
             padding: 2rem 0;
         }
 
-        .sidebar-logo { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
-        .sidebar-logo h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; }
-        .sidebar-logo i { color: var(--accent); }
-
         .sidebar-admin { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
+        .sidebar-admin h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-bottom: 0.8rem; }
+        .sidebar-admin h2 i { color: var(--accent); }
         .sidebar-admin img { width: 70px; height: 70px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 0.8rem; }
         .sidebar-admin h3 { color: var(--white); }
 
@@ -107,10 +125,11 @@ $documents = getAllRows(
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
 
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo"><h2><i class="fas fa-gavel"></i> Justice Law</h2></div>
         <div class="sidebar-admin">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=d4af37&color=1a3a5c" alt="Admin">
-            <h3>Administrator</h3>
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
+            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
+            <h3>Dennis Njenga</h3>
+            <p>Administrator</p>
         </div>
         <ul class="sidebar-menu">
             <li><a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
@@ -123,13 +142,7 @@ $documents = getAllRows(
     </aside>
 
     <main class="main-content">
-        <div class="header">
-            <h1><i class="fas fa-file-alt"></i> Manage Documents</h1>
-            <div class="header-actions">
-                <a href="admin_dashboard.php" class="filter-btn"><i class="fas fa-arrow-left"></i> Back</a>
-                <a href="logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
+        <?php include 'admin_header.php'; ?>
 
         <div class="section-card">
             <div class="table-container">

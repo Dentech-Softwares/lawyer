@@ -9,6 +9,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
+$user_names = explode(' ', $user_name);
+$user_initials = strtoupper(substr($user_names[0], 0, 1) . (isset($user_names[1]) ? substr($user_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Handle flash messages
+$flashSuccess = $_SESSION['success'] ?? '';
+unset($_SESSION['success']);
 
 // Get user info
 $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
@@ -92,31 +99,25 @@ if (isset($_GET['mark_read'])) {
             transition: all 0.3s ease;
         }
 
-        .sidebar-logo {
+        .sidebar-user {
             text-align: center;
             padding: 0 1.5rem 2rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             margin-bottom: 1.5rem;
         }
 
-        .sidebar-logo h2 {
+        .sidebar-user h2 {
             color: var(--white);
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
+            margin-bottom: 1rem;
         }
 
-        .sidebar-logo i {
+        .sidebar-user h2 i {
             color: var(--accent);
-        }
-
-        .sidebar-user {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
         }
 
         .sidebar-user img {
@@ -322,10 +323,158 @@ if (isset($_GET['mark_read'])) {
             transform: translateY(-2px);
         }
 
+        /* Profile Dropdown */
+        .profile-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-trigger {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            border: none;
+        }
+
+        .profile-trigger:hover {
+            background: var(--light-gray);
+        }
+
+        .profile-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-name-row {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-name {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+
+        .profile-role {
+            background: rgba(49, 130, 206, 0.1);
+            color: var(--info);
+            padding: 0.15rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .profile-chevron {
+            color: var(--gray);
+            font-size: 0.7rem;
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            width: 240px;
+            background: var(--white);
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            z-index: 1001;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .profile-container.active .profile-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .profile-dropdown-section {
+            padding: 1rem 1.25rem;
+        }
+
+        .profile-dropdown-label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray);
+            margin-bottom: 0.25rem;
+        }
+
+        .profile-dropdown-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .profile-divider {
+            height: 1px;
+            background: var(--light-gray);
+            margin: 0 1.25rem;
+        }
+
+        .profile-dropdown-logout {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.25rem;
+            color: var(--danger);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .profile-dropdown-logout:hover {
+            background: rgba(229, 62, 62, 0.1);
+        }
+
+        .profile-dropdown-logout i {
+            width: 18px;
+        }
+
+        /* Flash Alert */
+        .flash-alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 500;
+        }
+
+        .flash-alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-alert-success i {
+            color: #38a169;
+            font-size: 1.2rem;
+        }
+
         /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -503,7 +652,7 @@ if (isset($_GET['mark_read'])) {
             gap: 0.5rem;
         }
 
-        .btn-icon {
+         .btn-icon {
             width: 35px;
             height: 35px;
             border-radius: 8px;
@@ -514,6 +663,10 @@ if (isset($_GET['mark_read'])) {
             transition: all 0.3s ease;
             border: none;
             font-size: 0.9rem;
+        }
+
+        .btn-icon i {
+            color: inherit;
         }
 
         .btn-view {
@@ -632,12 +785,9 @@ if (isset($_GET['mark_read'])) {
     </button>
 
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-        </div>
-        
+     <aside class="sidebar" id="sidebar">
         <div class="sidebar-user">
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
             <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_name); ?>&background=d4af37&color=1a3a5c" alt="User">
             <h3><?php echo htmlspecialchars($user_name); ?></h3>
             <p>Client Account</p>
@@ -648,53 +798,19 @@ if (isset($_GET['mark_read'])) {
             <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
             <li><a href="client_appointments.php"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
             <li><a href="client_documents.php"><i class="fas fa-file-alt"></i> My Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> Website</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
-        <div class="header">
-            <h1>Welcome back, <?php echo htmlspecialchars($user_name); ?>!</h1>
-            <div class="header-actions">
-                <div class="notification-bell" onclick="toggleNotifications()">
-                    <i class="fas fa-bell"></i>
-                    <?php if($unreadNotifications['count'] > 0): ?>
-                        <span class="notification-badge"><?php echo $unreadNotifications['count']; ?></span>
-                    <?php endif; ?>
-                    
-                    <div class="notification-dropdown" id="notificationDropdown">
-                        <h3>Notifications</h3>
-                        <div class="notification-list">
-                            <?php if(!empty($notifications)): ?>
-                                <?php foreach($notifications as $notif): ?>
-                                    <div class="notification-item <?php echo $notif['status']; ?>">
-                                        <i class="fas fa-bell"></i>
-                                        <div>
-                                            <p><?php echo htmlspecialchars($notif['message']); ?></p>
-                                            <small><?php echo date('M d, Y h:i A', strtotime($notif['created_at'])); ?></small>
-                                        </div>
-                                        <?php if($notif['status'] == 'unread'): ?>
-                                            <a href="?mark_read=<?php echo $notif['id']; ?>" style="color: var(--accent);">
-                                                <i class="fas fa-check"></i>
-                                            </a>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <div class="notification-item">
-                                    <p>No notifications</p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                <a href="logout.php" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
+        <?php include 'client_header.php'; ?>
+
+        <?php if($flashSuccess): ?>
+            <div class="flash-alert flash-alert-success">
+                <i class="fas fa-check-circle"></i> <?php echo $flashSuccess; ?>
             </div>
-        </div>
+        <?php endif; ?>
 
         <!-- Stats -->
         <div class="stats-grid">
@@ -768,17 +884,20 @@ if (isset($_GET['mark_read'])) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
-                                    <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
-                                    <td>
-                                        <span class="status-badge <?php echo $apt['status']; ?>">
-                                            <?php echo ucfirst($apt['status']); ?>
-                                        </span>
-                                    </td>
+                                      <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
+                                      <td>
+                                          <span class="status-badge <?php echo $apt['status']; ?>">
+                                             <?php echo ucfirst($apt['status']); ?>
+                                          </span>
+                                      </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn-icon btn-view" title="View Details" onclick="viewAppointment(<?php echo $apt['id']; ?>)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
+                                         <button class="btn-icon btn-view" title="View Details" onclick="viewAppointment(<?php echo $apt['id']; ?>)">
+                                             <i class="fas fa-eye"></i>
+                                         </button>
+                                         <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank">
+                                             <i class="fas fa-print"></i>
+                                         </a>
                                             <?php if($apt['status'] == 'pending'): ?>
                                                 <button class="btn-icon btn-edit" title="Edit" onclick="editAppointment(<?php echo $apt['id']; ?>)">
                                                     <i class="fas fa-edit"></i>
@@ -813,22 +932,9 @@ if (isset($_GET['mark_read'])) {
             document.getElementById('sidebar').classList.toggle('active');
         }
 
-        // Toggle Notifications
-        function toggleNotifications() {
-            document.getElementById('notificationDropdown').classList.toggle('active');
-        }
-
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.notification-bell')) {
-                document.getElementById('notificationDropdown').classList.remove('active');
-            }
-        });
-
         // View Appointment
         function viewAppointment(id) {
-            // In a full implementation, this would open a modal
-            alert('Viewing appointment #' + id);
+            window.open('print_appointment.php?id=' + id, '_blank');
         }
 
         // Edit Appointment

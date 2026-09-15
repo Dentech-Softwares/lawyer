@@ -4,9 +4,19 @@ require_once 'db.php';
 $success = '';
 $error = '';
 
+// Check for session expiry message
+$sessionExpired = checkSessionTimeout();
+if ($sessionExpired) {
+    $error = $sessionExpired;
+}
+
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     header('Location: client_dashboard.php');
+    exit;
+}
+if (isset($_SESSION['admin_id'])) {
+    header('Location: admin_dashboard.php');
     exit;
 }
 
@@ -21,7 +31,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address';
     } else {
-        // Check user credentials
+        // First check admin users table
+        $admin = getRow("SELECT * FROM admin_users WHERE email = ?", [$email]);
+        
+        if ($admin && password_verify($password, $admin['password'])) {
+            // Admin login successful
+            $_SESSION['admin_id'] = $admin['id'];
+            $_SESSION['admin_username'] = $admin['username'];
+            $_SESSION['admin_email'] = $admin['email'];
+            $_SESSION['last_activity'] = time();
+            
+            // Redirect to admin dashboard
+            header('Location: admin_dashboard.php');
+            exit;
+        }
+        
+        // Then check regular users table
         $user = getRow("SELECT * FROM users WHERE email = ?", [$email]);
         
         if ($user) {
@@ -33,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
+                $_SESSION['last_activity'] = time();
                 
                 // Redirect to dashboard
                 header('Location: client_dashboard.php');
@@ -384,7 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="login-header">
             <i class="fas fa-gavel"></i>
             <h1>Welcome Back</h1>
-            <p>Login to your account</p>
+            <p>Login with your email address</p>
         </div>
         
         <div class="login-body">
@@ -428,14 +454,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </button>
             </form>
 
-            <div class="register-link">
-                Don't have an account? <a href="register.php">Register here</a>
+            <div class="demo-info" style="background: var(--light-gray); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; font-size: 0.85rem;">
+                <strong>Demo Admin:</strong> admin@justicelawfirm.com / 2060
             </div>
 
-            <div class="admin-link">
-                <a href="admin_login.php">
-                    <i class="fas fa-user-shield"></i> Admin Login
-                </a>
+            <div class="register-link">
+                Don't have an account? <a href="register.php">Register here</a>
             </div>
 
             <div class="back-home">

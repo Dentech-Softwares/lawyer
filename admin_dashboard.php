@@ -3,11 +3,15 @@ require_once 'db.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
-    header('Location: admin_login.php');
+    header('Location: login.php');
     exit;
 }
 
 $admin_username = $_SESSION['admin_username'];
+$admin_email = $_SESSION['admin_email'] ?? '';
+$admin_names = explode(' ', $admin_username);
+$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
 
 // Get stats
 $totalAppointments = getRow("SELECT COUNT(*) as count FROM appointments");
@@ -19,10 +23,23 @@ $totalDocuments = getRow("SELECT COUNT(*) as count FROM documents");
 
 // Get recent appointments
 $recentAppointments = getAllRows(
-    "SELECT a.*, u.name as client_name, u.email as client_email 
-     FROM appointments a 
-     JOIN users u ON a.user_id = u.id 
-     ORDER BY a.created_at DESC LIMIT 10"
+    "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone 
+       FROM appointments a 
+       JOIN users u ON a.user_id = u.id 
+       ORDER BY a.created_at DESC LIMIT 10"
+);
+
+// Get admin notifications (pending appointment requests)
+$adminNotifications = getAllRows(
+    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.status = 'pending' 
+     ORDER BY a.created_at DESC LIMIT 5"
+);
+
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
 );
 ?>
 <!DOCTYPE html>
@@ -72,31 +89,25 @@ $recentAppointments = getAllRows(
             padding: 2rem 0;
         }
 
-        .sidebar-logo {
+        .sidebar-admin {
             text-align: center;
             padding: 0 1.5rem 2rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             margin-bottom: 1.5rem;
         }
 
-        .sidebar-logo h2 {
+        .sidebar-admin h2 {
             color: var(--white);
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
+            margin-bottom: 0.8rem;
         }
 
-        .sidebar-logo i {
+        .sidebar-admin h2 i {
             color: var(--accent);
-        }
-
-        .sidebar-admin {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
         }
 
         .sidebar-admin img {
@@ -158,49 +169,10 @@ $recentAppointments = getAllRows(
             padding: 2rem;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .header h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .logout-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.8rem 1.5rem;
-            background: var(--danger);
-            color: var(--white);
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            background: #c53030;
-            transform: translateY(-2px);
-        }
-
         /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -434,6 +406,10 @@ $recentAppointments = getAllRows(
             text-decoration: none;
         }
 
+        .btn-icon i {
+            color: inherit;
+        }
+
         .btn-approve {
             background: rgba(56, 161, 105, 0.1);
             color: var(--success);
@@ -530,12 +506,9 @@ $recentAppointments = getAllRows(
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-        </div>
-        
         <div class="sidebar-admin">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=d4af37&color=1a3a5c" alt="Admin">
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
+            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
             <h3><?php echo htmlspecialchars($admin_username); ?></h3>
             <p>Administrator</p>
         </div>
@@ -550,19 +523,9 @@ $recentAppointments = getAllRows(
         </ul>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="header">
-            <h1>Admin Dashboard</h1>
-            <div class="header-actions">
-                <a href="index.php" class="btn btn-primary">
-                    <i class="fas fa-globe"></i> View Website
-                </a>
-                <a href="logout.php" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
+     <!-- Main Content -->
+     <main class="main-content">
+        <?php include 'admin_header.php'; ?>
 
         <!-- Stats -->
         <div class="stats-grid">
@@ -650,14 +613,14 @@ $recentAppointments = getAllRows(
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr>
-                            <th>Client</th>
-                            <th>Case Type</th>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
+                            <tr>
+                                <th>Client</th>
+                                <th>Case Type</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
                     </thead>
                     <tbody>
                         <?php if(!empty($recentAppointments)): ?>
@@ -690,6 +653,13 @@ $recentAppointments = getAllRows(
                                                     <i class="fas fa-check-double"></i>
                                                 </a>
                                             <?php endif; ?>
+                                            </button>
+                                            <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank">
+                                                <i class="fas fa-print"></i>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -710,6 +680,10 @@ $recentAppointments = getAllRows(
     <script>
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function viewAppointment(id) {
+            window.open('print_appointment.php?id=' + id, '_blank');
         }
     </script>
 </body>

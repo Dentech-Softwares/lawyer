@@ -13,6 +13,25 @@ $appointments = getAllRows(
     "SELECT * FROM appointments WHERE user_id = ? ORDER BY date DESC, time DESC",
     [$user_id]
 );
+
+// Client header data
+$user_names = explode(' ', $user_name);
+$user_initials = strtoupper(substr($user_names[0], 0, 1) . (isset($user_names[1]) ? substr($user_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Get notifications
+$notifications = getAllRows(
+    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
+    [$user_id]
+);
+$unreadNotifications = getRow(
+    "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND status = 'unread'",
+    [$user_id]
+);
+
+// Get user info
+$user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
+?>
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,10 +58,9 @@ $appointments = getAllRows(
         body { background: var(--light-gray); color: var(--dark); }
 
         .sidebar { width: 280px; background: linear-gradient(135deg, var(--primary), var(--secondary)); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 1000; padding: 2rem 0; }
-        .sidebar-logo { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
-        .sidebar-logo h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; }
-        .sidebar-logo i { color: var(--accent); }
         .sidebar-user { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
+        .sidebar-user h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-bottom: 1rem; }
+        .sidebar-user h2 i { color: var(--accent); }
         .sidebar-user img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 1rem; }
         .sidebar-user h3 { color: var(--white); font-size: 1.1rem; }
         .sidebar-user p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
@@ -87,6 +105,34 @@ $appointments = getAllRows(
         .status-badge.rejected { background: rgba(229, 62, 62, 0.1); color: var(--danger); }
         .status-badge.completed { background: rgba(49, 130, 206, 0.1); color: var(--info); }
 
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+
+        .btn-icon i {
+            color: inherit;
+        }
+
+        .btn-view {
+            background: var(--light-gray);
+            color: var(--primary);
+        }
+
+        .btn-view:hover {
+            background: var(--info);
+            color: var(--white);
+        }
+
         .empty-state { text-align: center; padding: 4rem; color: var(--gray); }
         .empty-state i { font-size: 4rem; color: var(--light-gray); margin-bottom: 1rem; }
 
@@ -102,9 +148,9 @@ $appointments = getAllRows(
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
 
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo"><h2><i class="fas fa-gavel"></i> Justice Law</h2></div>
+     <aside class="sidebar" id="sidebar">
         <div class="sidebar-user">
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
             <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_name); ?>&background=d4af37&color=1a3a5c" alt="User">
             <h3><?php echo htmlspecialchars($user_name); ?></h3>
             <p>Client Account</p>
@@ -114,16 +160,12 @@ $appointments = getAllRows(
             <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
             <li><a href="client_appointments.php" class="active"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
             <li><a href="client_documents.php"><i class="fas fa-file-alt"></i> My Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> Website</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </aside>
 
     <main class="main-content">
-        <div class="header">
-            <h1><i class="fas fa-calendar-check"></i> My Appointments</h1>
-            <a href="logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div>
+        <?php include 'client_header.php'; ?>
 
         <?php
         $pending = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending'", [$user_id]);
@@ -148,7 +190,7 @@ $appointments = getAllRows(
                 <?php if(!empty($appointments)): ?>
                     <table>
                         <thead>
-                            <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th></tr>
+                             <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th><th>Actions</th></tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
@@ -156,8 +198,13 @@ $appointments = getAllRows(
                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
                                     <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
-                                    <td><?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 50))); ?><?php echo strlen($apt['message'] ?? '') > 50 ? '...' : ''; ?></td>
-                                    <td><span class="status-badge <?php echo $apt['status']; ?>"><?php echo ucfirst($apt['status']); ?></span></td>
+                                     <td><?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 50))); ?><?php echo strlen($apt['message'] ?? '') > 50 ? '...' : ''; ?></td>
+                                     <td><span class="status-badge <?php echo $apt['status']; ?>"><?php echo ucfirst($apt['status']); ?></span></td>
+                                    <td>
+                                        <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

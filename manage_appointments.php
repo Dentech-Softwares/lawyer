@@ -3,7 +3,7 @@ require_once 'db.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
-    header('Location: admin_login.php');
+    header('Location: login.php');
     exit;
 }
 
@@ -41,6 +41,25 @@ $appointments = getAllRows($sql, $params);
 
 // Get unique case types for filter
 $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY case_type");
+
+// Admin header data
+$admin_username = $_SESSION['admin_username'];
+$admin_email = $_SESSION['admin_email'] ?? '';
+$admin_names = explode(' ', $admin_username);
+$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Get admin notifications (pending appointment requests)
+$adminNotifications = getAllRows(
+    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.status = 'pending' 
+     ORDER BY a.created_at DESC LIMIT 5"
+);
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,31 +108,25 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
             padding: 2rem 0;
         }
 
-        .sidebar-logo {
+        .sidebar-admin {
             text-align: center;
             padding: 0 1.5rem 2rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             margin-bottom: 1.5rem;
         }
 
-        .sidebar-logo h2 {
+        .sidebar-admin h2 {
             color: var(--white);
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
+            margin-bottom: 0.8rem;
         }
 
-        .sidebar-logo i {
+        .sidebar-admin h2 i {
             color: var(--accent);
-        }
-
-        .sidebar-admin {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
         }
 
         .sidebar-admin img {
@@ -371,6 +384,10 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
             text-decoration: none;
         }
 
+        .btn-icon i {
+            color: inherit;
+        }
+
         .btn-approve {
             background: rgba(56, 161, 105, 0.1);
             color: var(--success);
@@ -419,6 +436,14 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
         .btn-view:hover {
             background: var(--primary);
             color: var(--white);
+        }
+
+        .message-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
         }
 
         /* Empty State */
@@ -495,14 +520,11 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-        </div>
-        
         <div class="sidebar-admin">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=d4af37&color=1a3a5c" alt="Admin">
-            <h3>Administrator</h3>
-            <p>Admin Panel</p>
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
+            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
+            <h3>Dennis Njenga</h3>
+            <p>Administrator</p>
         </div>
 
         <ul class="sidebar-menu">
@@ -517,17 +539,7 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
 
     <!-- Main Content -->
     <main class="main-content">
-        <div class="header">
-            <h1><i class="fas fa-calendar"></i> Manage Appointments</h1>
-            <div class="header-actions">
-                <a href="admin_dashboard.php" class="btn btn-outline">
-                    <i class="fas fa-arrow-left"></i> Back
-                </a>
-                <a href="logout.php" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
+        <?php include 'admin_header.php'; ?>
 
         <!-- Filters -->
         <div class="filters">
@@ -568,14 +580,14 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
                 <?php if(!empty($appointments)): ?>
                     <table>
                         <thead>
-                            <tr>
-                                <th>Client Info</th>
-                                <th>Case Type</th>
-                                <th>Date & Time</th>
-                                <th>Message</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
+                                <tr>
+                                    <th>Client Info</th>
+                                    <th>Case Type</th>
+                                    <th>Date & Time</th>
+                                    <th>Message</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
@@ -589,36 +601,34 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
                                     <td>
                                         <?php echo date('M d, Y', strtotime($apt['date'])); ?><br>
                                         <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
-                                    </td>
-                                    <td>
-                                        <?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 100))); ?>
-                                        <?php echo strlen($apt['message'] ?? '') > 100 ? '...' : ''; ?>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge <?php echo $apt['status']; ?>">
+                                     </td>
+                                     <td class="message-cell" title="<?php echo htmlspecialchars($apt['message'] ?? ''); ?>">
+                                         <?php echo htmlspecialchars(substr($apt['message'] ?? '', 0, 40)); ?>
+                                         <?php echo strlen($apt['message'] ?? '') > 40 ? '...' : ''; ?>
+                                     </td>
+                                     <td>
+                                         <span class="status-badge <?php echo $apt['status']; ?>">
                                             <?php echo ucfirst($apt['status']); ?>
                                         </span>
                                     </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <?php if($apt['status'] == 'pending'): ?>
-                                                <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=approve" class="btn-icon btn-approve" title="Approve">
-                                                    <i class="fas fa-check"></i>
-                                                </a>
-                                                <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=reject" class="btn-icon btn-reject" title="Reject">
-                                                    <i class="fas fa-times"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if($apt['status'] == 'approved'): ?>
-                                                <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=complete" class="btn-icon btn-complete" title="Mark Complete">
-                                                    <i class="fas fa-check-double"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                            <a href="delete_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this appointment?');">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
+                                     <td>
+                                         <div class="action-buttons">
+                                             <?php if($apt['status'] == 'pending'): ?>
+                                                 <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=approve" class="btn-icon btn-approve" title="Approve">
+                                                     <i class="fas fa-check"></i>
+                                                 </a>
+                                                 <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=reject" class="btn-icon btn-reject" title="Reject">
+                                                     <i class="fas fa-times"></i>
+                                                 </a>
+                                             <?php endif; ?>
+                                             <a href="delete_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this appointment?');">
+                                                 <i class="fas fa-trash"></i>
+                                             </a>
+                                             <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
+                                                 <i class="fas fa-eye"></i>
+                                             </a>
+                                         </div>
+                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

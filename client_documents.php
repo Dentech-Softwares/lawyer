@@ -49,6 +49,24 @@ $documents = getAllRows(
     "SELECT * FROM documents WHERE user_id = ? ORDER BY uploaded_at DESC",
     [$user_id]
 );
+
+// Client header data
+$user_names = explode(' ', $user_name);
+$user_initials = strtoupper(substr($user_names[0], 0, 1) . (isset($user_names[1]) ? substr($user_names[1], 0, 1) : ''));
+$current_date = date('F j, Y');
+
+// Get notifications
+$notifications = getAllRows(
+    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
+    [$user_id]
+);
+$unreadNotifications = getRow(
+    "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND status = 'unread'",
+    [$user_id]
+);
+
+// Get user info
+$user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,10 +92,9 @@ $documents = getAllRows(
         body { background: var(--light-gray); color: var(--dark); }
 
         .sidebar { width: 280px; background: linear-gradient(135deg, var(--primary), var(--secondary)); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 1000; padding: 2rem 0; }
-        .sidebar-logo { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
-        .sidebar-logo h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; }
-        .sidebar-logo i { color: var(--accent); }
         .sidebar-user { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
+        .sidebar-user h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-bottom: 1rem; }
+        .sidebar-user h2 i { color: var(--accent); }
         .sidebar-user img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 1rem; }
         .sidebar-user h3 { color: var(--white); font-size: 1.1rem; }
         .sidebar-user p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
@@ -142,9 +159,9 @@ $documents = getAllRows(
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
 
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo"><h2><i class="fas fa-gavel"></i> Justice Law</h2></div>
+     <aside class="sidebar" id="sidebar">
         <div class="sidebar-user">
+            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
             <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_name); ?>&background=d4af37&color=1a3a5c" alt="User">
             <h3><?php echo htmlspecialchars($user_name); ?></h3>
             <p>Client Account</p>
@@ -154,16 +171,12 @@ $documents = getAllRows(
             <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
             <li><a href="client_appointments.php"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
             <li><a href="client_documents.php" class="active"><i class="fas fa-file-alt"></i> My Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> Website</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </aside>
 
     <main class="main-content">
-        <div class="header">
-            <h1><i class="fas fa-file-alt"></i> My Documents</h1>
-            <a href="logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div>
+        <?php include 'client_header.php'; ?>
 
         <?php if($uploadSuccess): ?>
             <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo $uploadSuccess; ?></div>
