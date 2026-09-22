@@ -612,22 +612,25 @@ $unreadAdminNotifications = getRow(
                                         </span>
                                     </td>
                                      <td>
-                                         <div class="action-buttons">
-                                             <?php if($apt['status'] == 'pending'): ?>
-                                                 <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=approve" class="btn-icon btn-approve" title="Approve">
-                                                     <i class="fas fa-check"></i>
-                                                 </a>
-                                                 <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=reject" class="btn-icon btn-reject" title="Reject">
-                                                     <i class="fas fa-times"></i>
-                                                 </a>
-                                             <?php endif; ?>
-                                             <a href="delete_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this appointment?');">
-                                                 <i class="fas fa-trash"></i>
-                                             </a>
-                                             <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
-                                                 <i class="fas fa-eye"></i>
-                                             </a>
-                                         </div>
+                                          <div class="action-buttons">
+                                              <?php if($apt['status'] == 'pending'): ?>
+                                                  <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=approve" class="btn-icon btn-approve" title="Approve">
+                                                      <i class="fas fa-check"></i>
+                                                  </a>
+                                                  <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=reject" class="btn-icon btn-reject" title="Reject">
+                                                      <i class="fas fa-times"></i>
+                                                  </a>
+                                              <?php endif; ?>
+                                              <a href="admin_schedule.php" class="btn-icon btn-view" title="Schedule Continuation">
+                                                  <i class="fas fa-clock"></i>
+                                              </a>
+                                              <a href="delete_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this appointment?');">
+                                                  <i class="fas fa-trash"></i>
+                                              </a>
+                                              <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
+                                                  <i class="fas fa-eye"></i>
+                                              </a>
+                                          </div>
                                      </td>
                                 </tr>
                             <?php endforeach; ?>

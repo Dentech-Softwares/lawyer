@@ -63,17 +63,17 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['additional_note'])) {
         $additionalNote = trim($_POST['additional_note']);
-        
+
         if (!empty($additionalNote)) {
             // Append new note to existing message
             $existingNotes = $appointment['notes'] ?? '';
             $newNotes = $existingNotes . "\n\n" . date('Y-m-d H:i') . " - " . $additionalNote;
-            
+
             execute(
                 "UPDATE appointments SET notes = ? WHERE id = ?",
                 [$newNotes, $id]
             );
-            
+
             // Create notification for admin
             $admin = getRow("SELECT id FROM admin_users LIMIT 1");
             if ($admin) {
@@ -82,13 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     [$admin['id'], 'Client ' . $appointment['client_name'] . ' added additional notes to case #' . $id]
                 );
             }
-            
+
             // Also create notification for client
             execute(
                 "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
                 [$user_id, 'Your additional notes have been saved for case #' . $id]
             );
-            
+
             // Refresh appointment data
             $appointment = getRow(
                 "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone 
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                  WHERE a.id = ? AND a.user_id = ?",
                 [$id, $user_id]
             );
-            
+
             $_SESSION['success'] = 'Additional notes added successfully!';
             header("Location: continue_case.php?id=" . $id);
             exit;
@@ -105,12 +105,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error = 'Please enter a note before saving.';
         }
     }
-    
+
     if (isset($_POST['document_note'])) {
         // This would be handled by document upload, not here
     }
-    
+
     if (isset($_POST['continue_case_request'])) {
+        // Store appointment ID in session for payment
+        $_SESSION['continue_appointment_id'] = $id;
+
+        // Set appointment status to pending for rescheduling
+        execute("UPDATE appointments SET status = 'pending' WHERE id = ?", [$id]);
+
         $admin = getRow("SELECT id FROM admin_users LIMIT 1");
         if ($admin) {
             execute(
@@ -118,7 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 [$admin['id'], 'Client ' . $appointment['client_name'] . ' requested to continue case #' . $id . ' (' . $appointment['case_type'] . ') - please schedule an appointment']
             );
         }
-        $_SESSION['success'] = 'Case continuation request sent to admin. They will contact you to schedule an appointment.';
+
+        $_SESSION['success'] = 'Case continuation request sent to admin. They will schedule your appointment soon.';
         header("Location: continue_case.php?id=" . $id);
         exit;
     }
@@ -130,6 +137,11 @@ unset($_SESSION['success']);
 $flashError = $_SESSION['error'] ?? '';
 unset($_SESSION['error']);
 $message = $flashSuccess ?: $flashError;
+$success = $message;
+$error = '';
+
+// Payment constants
+define('CONTINUATION_FEE', 250);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,73 +151,89 @@ $message = $flashSuccess ?: $flashError;
     <title>Continue Case - Justice Law Firm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .case-detail-card {
-            background: var(--white);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 2rem;
-            overflow: hidden;
+        :root {
+            --primary: #1a3a5c;
+            --secondary: #2c5282;
+            --accent: #d4af37;
+            --accent-hover: #b8962e;
+            --white: #ffffff;
+            --light-gray: #f5f7fa;
+            --dark: #1a202c;
+            --gray: #718096;
+            --success: #38a169;
+            --danger: #e53e3e;
         }
 
-        .section-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--light-gray);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        .section-header h2 {
-            color: var(--primary);
-            font-size: 1.3rem;
+        body {
+            background: linear-gradient(135deg, var(--light-gray) 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            padding: 120px 2rem 2rem;
         }
 
-        .appointment-detail {
-            padding: 1.5rem;
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 1rem 0;
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .detail-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
-        .detail-item {
+        .navbar {
             display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .detail-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--gray);
-            font-weight: 600;
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .detail-value {
-            color: var(--dark);
-            font-size: 1rem;
-            font-weight: 600;
+        .logo i {
+            color: var(--accent);
         }
 
-        .detail-value textarea {
-            width: 100%;
-            padding: 1.5rem;
-            border: 2px solid var(--accent);
-            border-radius: 12px;
-            font-size: 1rem;
-            resize: vertical;
-            min-height: 200px;
-            font-family: inherit;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            color: var(--dark);
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-weight: 500;
             transition: all 0.3s ease;
         }
 
-        .detail-value textarea:focus {
-            outline: none;
-            border-color: var(--info);
-            box-shadow: 0 0 0 4px rgba(49, 130, 206, 0.2);
-            background: var(--white);
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
         }
 
         .btn {
@@ -214,12 +242,23 @@ $message = $flashSuccess ?: $flashError;
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
+            cursor: pointer;
             border: none;
             font-size: 0.95rem;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            cursor: pointer;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--white);
+            color: var(--white);
+        }
+
+        .btn-outline:hover {
+            background: var(--white);
+            color: var(--primary);
         }
 
         .btn-primary {
@@ -231,20 +270,61 @@ $message = $flashSuccess ?: $flashError;
             background: var(--accent-hover);
         }
 
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--light-gray);
-            color: var(--gray);
+        /* Case Container */
+        .booking-container {
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        .btn-outline:hover {
-            border-color: var(--accent);
+        .booking-card {
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .booking-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 2.5rem;
+            text-align: center;
+            color: var(--white);
+        }
+
+        .booking-header i {
+            font-size: 3rem;
             color: var(--accent);
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
         }
 
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.85rem;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .booking-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .booking-header p {
+            opacity: 0.9;
+        }
+
+        .booking-body {
+            padding: 2.5rem;
         }
 
         .alert {
@@ -269,118 +349,291 @@ $message = $flashSuccess ?: $flashError;
             border: 1px solid #f5c6cb;
         }
 
-        .notes-section {
-            background: var(--light-gray);
-            border-radius: 8px;
-            padding: 1.5rem;
+        /* Detail Grid */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
             margin-bottom: 1.5rem;
         }
 
-        .notes-section h3 {
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--gray);
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: var(--dark);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: rgba(214, 158, 46, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(214, 158, 46, 0.3);
+        }
+
+        .status-badge.approved {
+            background: rgba(56, 161, 105, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(56, 161, 105, 0.3);
+        }
+
+        .status-badge.rejected {
+            background: rgba(229, 62, 62, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(229, 62, 62, 0.3);
+        }
+
+        .status-badge.completed {
+            background: rgba(49, 130, 206, 0.15);
+            color: var(--info);
+            border: 1px solid rgba(49, 130, 206, 0.3);
+        }
+
+        /* Notes */
+        .notes-container {
+            margin-bottom: 2rem;
+        }
+
+        .notes-container h3 {
             color: var(--primary);
+            font-size: 1.1rem;
             margin-bottom: 1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .notes-section .note-entry {
+        .note-card {
             background: var(--white);
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 0.8rem;
             border-left: 3px solid var(--accent);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         }
 
-        .notes-section .note-entry .note-time {
+        .note-card .note-time {
             font-size: 0.8rem;
             color: var(--gray);
             margin-bottom: 0.5rem;
         }
 
-        .notes-section .note-entry .note-text {
+        .note-card .note-text {
             color: var(--dark);
             line-height: 1.5;
         }
 
-        .notes-section .no-notes {
+        .no-notes {
             color: var(--gray);
             font-style: italic;
             text-align: center;
-            padding: 1rem;
-        }
-
-        .add-note-section {
-            background: var(--white);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             padding: 2rem;
-            margin-bottom: 2rem;
         }
 
-        .add-note-section h3 {
+        /* Add Notes Form */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
             color: var(--primary);
-            margin-bottom: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
 
-        .add-note-section textarea {
+        .form-group label i {
+            color: var(--accent);
+            margin-right: 0.5rem;
+        }
+
+        .form-group textarea {
             width: 100%;
-            min-height: 150px;
-            padding: 12px 16px;
-            border: 1px solid #d1d5db;
+            padding: 1rem;
+            border: 2px solid var(--light-gray);
             border-radius: 8px;
             font-size: 1rem;
             font-family: inherit;
             line-height: 1.5;
             resize: vertical;
-            background: var(--white);
+            min-height: 120px;
             transition: all 0.3s ease;
+            background: var(--white);
         }
 
-        .add-note-section textarea:focus {
+        .form-group textarea:focus {
             outline: none;
             border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
-        }
-
-        .add-note-section .btn-submit {
-            margin-top: 1rem;
-            padding: 0.8rem 2rem;
-            background: var(--accent);
-            color: var(--primary);
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .add-note-section .btn-submit:hover {
-            background: var(--accent-hover);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
 
         .form-actions {
             display: flex;
             gap: 1rem;
-            justify-content: flex-end;
-            padding: 1.5rem;
-            border-top: 1px solid var(--light-gray);
+            margin-top: 1rem;
+            max-width: 400px;
+            justify-content: center;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .documents-section {
-            background: var(--white);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            overflow: hidden;
-            margin-bottom: 2rem;
+        .submit-btn {
+            flex: 1;
+            padding: 0.8rem 1.5rem;
+            background: var(--accent);
+            color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
-        .documents-section .section-header {
+        .submit-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .cancel-btn {
+            flex: 1;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
             background: var(--light-gray);
+            color: var(--dark);
+            border: 1px solid var(--light-gray);
+            text-decoration: none;
         }
 
-        .documents-section .document-padding {
-            padding: 1.5rem;
+        .cancel-btn:hover {
+            background: var(--dark);
+            color: var(--white);
+            transform: translateY(-1px);
+        }
+
+        .submit-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.5), 0 5px 20px rgba(212, 175, 55, 0.4);
+        }
+
+        /* Action Footer */
+        .action-footer {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--light-gray);
+            background: var(--light-gray);
+            border-radius: 0 0 20px 20px;
+            margin: -1.5rem -2.5rem 1.5rem -2.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-footer .btn {
+            padding: 0.65rem 1.3rem;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-print {
+            background: var(--white);
+            color: var(--secondary);
+            border: 2px solid var(--secondary);
+            font-weight: 600;
+        }
+
+        .btn-print:hover {
+            background: var(--secondary);
+            color: var(--white);
+            box-shadow: 0 3px 12px rgba(44, 82, 130, 0.3);
+        }
+
+        .btn-print:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.3);
+        }
+
+        .btn-back {
+            background: var(--white);
+            color: var(--gray);
+            border: 2px solid var(--gray);
+            font-weight: 600;
+        }
+
+        .btn-back:hover {
+            background: var(--gray);
+            color: var(--white);
+            box-shadow: 0 3px 12px rgba(113, 128, 150, 0.3);
+        }
+
+        .btn-back:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(113, 128, 150, 0.3);
+        }
+
+        .btn-cancel {
+            background: var(--white);
+            color: var(--danger);
+            border: 2px solid var(--danger);
+            font-weight: 600;
+        }
+
+        .btn-cancel:hover {
+            background: var(--danger);
+            color: var(--white);
+            box-shadow: 0 3px 12px rgba(229, 62, 62, 0.3);
+        }
+
+        .btn-cancel:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.3);
+        }
+
+        /* Documents Table */
+        .documents-section {
+            margin-top: 2rem;
+        }
+
+        .documents-section h3 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .table-container {
@@ -393,7 +646,7 @@ $message = $flashSuccess ?: $flashError;
         }
 
         th, td {
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1.5rem;
             text-align: left;
         }
 
@@ -411,22 +664,6 @@ $message = $flashSuccess ?: $flashError;
 
         tr:hover {
             background: var(--light-gray);
-        }
-
-        .document-list {
-            list-style: none;
-        }
-
-        .document-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.8rem 1.5rem;
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .document-list li:last-child {
-            border-bottom: none;
         }
 
         .document-info {
@@ -473,46 +710,28 @@ $message = $flashSuccess ?: $flashError;
             color: var(--white);
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
         }
 
-        .status-badge.pending {
-            background: rgba(214, 158, 46, 0.15);
-            color: var(--warning);
-            border: 1px solid rgba(214, 158, 46, 0.3);
-        }
-
-        .status-badge.approved {
-            background: rgba(56, 161, 105, 0.15);
-            color: var(--success);
-            border: 1px solid rgba(56, 161, 105, 0.3);
-        }
-
-        .status-badge.rejected {
-            background: rgba(229, 62, 62, 0.15);
-            color: var(--danger);
-            border: 1px solid rgba(229, 62, 62, 0.3);
-        }
-
-        .status-badge.completed {
-            background: rgba(49, 130, 206, 0.15);
-            color: var(--info);
-            border: 1px solid rgba(49, 130, 206, 0.3);
-        }
-
-        .action-bar {
-            display: flex;
-            gap: 1rem;
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--light-gray);
-        }
-
+        /* Responsive */
         @media (max-width: 768px) {
+            .nav-links, .auth-buttons {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            body {
+                padding: 100px 1rem 2rem;
+            }
+
             .detail-grid {
                 grid-template-columns: 1fr;
             }
@@ -521,37 +740,75 @@ $message = $flashSuccess ?: $flashError;
                 flex-direction: column;
             }
 
-            .action-bar {
-                flex-wrap: wrap;
+            .action-footer .btn {
+                flex: 1;
+                justify-content: center;
+                max-width: 220px;
             }
         }
     </style>
 </head>
 <body>
-    <?php include 'client_header.php'; ?>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-gavel"></i>
+                    <span>Justice Law</span>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="index.php">Home</a></li>
+                    <li><a href="about.php">About</a></li>
+                    <li><a href="services.php">Services</a></li>
+                    <li><a href="contact.php">Contact</a></li>
+                </ul>
+                <div class="auth-buttons">
+                    <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
+                    <a href="logout.php" class="btn btn-primary">Logout</a>
+                </div>
+                <div class="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </nav>
+        </div>
+    </header>
 
-    <main class="main-content">
-        <?php if($message): ?>
-            <div class="alert alert-<?php echo strpos($message, 'error') !== false || strpos($message, 'cannot') !== false || strpos($message, 'not found') !== false ? 'danger' : 'success'; ?>">
-                <i class="fas fa-<?php echo strpos($message, 'error') !== false || strpos($message, 'cannot') !== false || strpos($message, 'not found') !== false ? 'exclamation-circle' : 'check-circle'; ?>"></i>
-                <?php echo htmlspecialchars($message); ?>
+    <!-- Continue Case Content -->
+    <div class="booking-container">
+        <div class="booking-card">
+            <div class="booking-header">
+                <i class="fas fa-gavel"></i>
+                <h1>Case #<?php echo $appointment['id']; ?> - Continue Case</h1>
+                <p><?php echo htmlspecialchars($appointment['case_type']); ?> | <?php echo date('M d, Y', strtotime($appointment['date'])); ?> at <?php echo date('h:i A', strtotime($appointment['time'])); ?></p>
             </div>
-        <?php endif; ?>
 
-        <div class="case-detail-card">
-            <div class="section-header">
-                <h2><i class="fas fa-gavel"></i> Case #<?php echo $appointment['id']; ?> - Continue Case</h2>
-            </div>
+            <div class="booking-body">
+                <?php if($success): ?>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+                    </div>
+                <?php endif; ?>
 
-            <div class="appointment-detail">
+                <?php if($error): ?>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Appointment Details -->
                 <div class="detail-grid">
                     <div class="detail-item">
                         <span class="detail-label">Case Type</span>
                         <span class="detail-value"><?php echo htmlspecialchars($appointment['case_type']); ?></span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">Client Name</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_name']); ?></span>
+                        <span class="detail-label">Status</span>
+                        <span class="detail-value">
+                            <span class="status-badge <?php echo $appointment['status']; ?>">
+                                <?php echo ucfirst($appointment['status']); ?>
+                            </span>
+                        </span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Date & Time</span>
@@ -561,12 +818,8 @@ $message = $flashSuccess ?: $flashError;
                         </span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">Status</span>
-                        <span class="detail-value">
-                            <span class="status-badge <?php echo $appointment['status']; ?>">
-                                <?php echo ucfirst($appointment['status']); ?>
-                            </span>
-                        </span>
+                        <span class="detail-label">Client Name</span>
+                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_name']); ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Email</span>
@@ -582,120 +835,240 @@ $message = $flashSuccess ?: $flashError;
                     </div>
                 </div>
 
-                <div class="action-bar">
+                <!-- Action Footer -->
+                <div class="action-footer">
+                    <?php if($success && strpos($success, 'continuation request sent') !== false): ?>
+                        <div class="payment-section" style="background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; border: 2px dashed var(--accent);">
+                            <h3 style="color: var(--primary); margin-bottom: 0.75rem; font-size: 1.1rem;">
+                                <i class="fas fa-mobile-alt"></i> Complete Your Payment
+                            </h3>
+                            <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
+                                Continuation fee: <strong>KSh <?php echo number_format(CONTINUATION_FEE); ?></strong> (Pay via M-Pesa)
+                            </p>
+                            <button class="submit-btn" id="payNowBtn" style="max-width: 300px; margin: 0 auto;">
+                                <i class="fas fa-money-bill-wave"></i> Pay Now
+                            </button>
+                        </div>
+
+                        <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+                            <div style="background:var(--white); border-radius:20px; padding:2rem; max-width:450px; width:90%; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                                <div style="text-align:center; margin-bottom:1.5rem;">
+                                    <i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i>
+                                    <h3 style="color:var(--primary);">M-Pesa STK Push Payment</h3>
+                                    <p style="color:var(--gray); font-size:0.9rem;">Enter your M-Pesa number to pay KSh <?php echo number_format(CONTINUATION_FEE); ?></p>
+                                </div>
+                                <div class="form-group" style="margin-bottom:1.5rem;">
+                                    <label for="mpesaPhone" style="display:block; color:var(--primary); font-weight:600; margin-bottom:0.5rem;">
+                                        <i class="fas fa-phone"></i> M-Pesa Phone Number
+                                    </label>
+                                    <input type="tel" id="mpesaPhone" placeholder="2547XXXXXXXX"
+                                           style="width:100%; padding:0.8rem; border:2px solid var(--light-gray); border-radius:8px; font-size:1rem; text-align:center;">
+                                </div>
+                                <div id="paymentStatus" style="display:none; text-align:center; padding:1rem; margin-bottom:1rem; border-radius:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7;"></div>
+                                <div style="display:flex; gap:1rem;">
+                                    <button class="btn btn-back" id="cancelPayment" style="flex:1;">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    <button class="btn btn-primary" id="confirmPayment" style="flex:1;">
+                                        <i class="fas fa-check"></i> Pay
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <form method="POST" action="" style="display: inline;">
                         <button type="submit" name="continue_case_request" class="btn btn-primary" onclick="return confirm('This will send a request to the admin to schedule your next appointment. Continue?');">
                             <i class="fas fa-gavel"></i> Continue Case
                         </button>
                     </form>
-                    <a href="print_appointment.php?id=<?php echo $appointment['id']; ?>" class="btn btn-outline" target="_blank">
+                    <a href="print_appointment.php?id=<?php echo $appointment['id']; ?>" class="btn btn-print" target="_blank" title="Print case details">
                         <i class="fas fa-print"></i> Print Details
                     </a>
-                    <a href="client_dashboard.php" class="btn btn-outline">
+                    <a href="client_dashboard.php" class="btn btn-back" title="Return to dashboard">
                         <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
                 </div>
-            </div>
-        </div>
 
-        <div class="case-detail-card">
-            <div class="section-header">
-                <h2><i class="fas fa-clipboard-edit"></i> Case Notes</h2>
-            </div>
-            <div class="appointment-detail">
-                <?php if(!empty($appointment['notes'])): ?>
-                    <?php
-                    $noteEntries = array_filter(array_map('trim', explode("\n\n", $appointment['notes'])));
-                    ?>
-                    <?php foreach($noteEntries as $entry): ?>
-                        <?php if(!empty($entry)): ?>
-                            <div class="notes-section">
-                                <?php
-                                $lines = explode("\n", $entry);
-                                $noteTime = $lines[0] ?? '';
-                                $noteText = implode("\n", array_slice($lines, 1));
-                                ?>
-                                <div class="note-time"><?php echo htmlspecialchars($noteTime); ?></div>
-                                <div class="note-text"><?php echo nl2br(htmlspecialchars($noteText)); ?></div>
-                            </div>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="notes-section">
+                <!-- Case Notes -->
+                <div class="notes-container">
+                    <h3><i class="fas fa-clipboard-edit"></i> Case Notes</h3>
+                    <?php if(!empty($appointment['notes'])): ?>
+                        <?php
+                        $noteEntries = array_filter(array_map('trim', explode("\n\n", $appointment['notes'])));
+                        ?>
+                        <?php foreach($noteEntries as $entry): ?>
+                            <?php if(!empty($entry)): ?>
+                                <div class="note-card">
+                                    <?php
+                                    $lines = explode("\n", $entry);
+                                    $noteTime = $lines[0] ?? '';
+                                    $noteText = implode("\n", array_slice($lines, 1));
+                                    ?>
+                                    <div class="note-time"><?php echo htmlspecialchars($noteTime); ?></div>
+                                    <div class="note-text"><?php echo nl2br(htmlspecialchars($noteText)); ?></div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
                         <div class="no-notes">No case notes have been added yet.</div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Add Additional Notes -->
+                <div class="form-group">
+                    <label for="additional_note">
+                        <i class="fas fa-plus"></i> Add Additional Notes
+                    </label>
+                    <form method="POST" action="">
+                        <textarea name="additional_note" id="additional_note" placeholder="Enter any additional information, updates, or questions about your case..." required></textarea>
+                        <div class="form-actions">
+                            <a href="client_dashboard.php" class="cancel-btn">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-save"></i> Save Notes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Documents -->
+                <?php if(!empty($documents)): ?>
+                    <div class="documents-section">
+                        <h3><i class="fas fa-file-alt"></i> Uploaded Documents</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Document</th>
+                                        <th>Type</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach($documents as $doc): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i>
+                                                    <div>
+                                                        <strong><?php echo htmlspecialchars($doc['file_name']); ?></strong>
+                                                        <div class="document-date"><?php echo date('M d, Y h:i A', strtotime($doc['uploaded_at'])); ?></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><?php echo strtoupper(pathinfo($doc['file_name'], PATHINFO_EXTENSION)); ?></td>
+                                            <td><?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?></td>
+                                            <td>
+                                                <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-view" download title="Download">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
-
-        <div class="case-detail-card">
-            <div class="section-header">
-                <h2><i class="fas fa-plus"></i> Add Additional Notes</h2>
-            </div>
-            <div class="appointment-detail">
-                <form method="POST" action="">
-                    <textarea name="additional_note" placeholder="Enter any additional information, updates, or questions about your case..." required></textarea>
-                    <div class="form-actions">
-                        <a href="client_dashboard.php" class="btn btn-outline">
-                            <i class="fas fa-times"></i> Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Notes
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <?php if(!empty($documents)): ?>
-            <div class="documents-section">
-                <div class="section-header">
-                    <h2><i class="fas fa-file-alt"></i> Uploaded Documents</h2>
-                </div>
-                <div class="document-padding">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Document</th>
-                                    <th>Type</th>
-                                    <th>Uploaded</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($documents as $doc): ?>
-                                    <tr>
-                                        <td>
-                                            <div class="document-info">
-                                                <i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i>
-                                                <div>
-                                                    <strong><?php echo htmlspecialchars($doc['file_name']); ?></strong>
-                                                    <div class="document-date"><?php echo date('M d, Y h:i A', strtotime($doc['uploaded_at'])); ?></div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td><?php echo strtoupper(pathinfo($doc['file_name'], PATHINFO_EXTENSION)); ?></td>
-                                        <td><?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?></td>
-                                        <td>
-                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-view" download title="Download">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-    </main>
+    </div>
 
     <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar') && document.getElementById('sidebar').classList.toggle('active');
+        // Mobile menu toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+            });
         }
+
+        // Payment Modal Logic
+        const payNowBtn = document.getElementById('payNowBtn');
+        const paymentModal = document.getElementById('paymentModal');
+        const cancelPayment = document.getElementById('cancelPayment');
+        const confirmPayment = document.getElementById('confirmPayment');
+        const paymentStatus = document.getElementById('paymentStatus');
+
+        if (payNowBtn) {
+            payNowBtn.addEventListener('click', function() {
+                paymentModal.style.display = 'flex';
+                paymentStatus.style.display = 'none';
+                paymentStatus.innerHTML = '';
+                paymentStatus.className = '';
+            });
+        }
+
+        if (cancelPayment) {
+            cancelPayment.addEventListener('click', function() {
+                paymentModal.style.display = 'none';
+            });
+        }
+
+        if (confirmPayment) {
+            confirmPayment.addEventListener('click', function() {
+                const phone = document.getElementById('mpesaPhone').value.replace(/\D/g, '');
+                if (!phone || phone.length < 9) {
+                    paymentStatus.style.display = 'block';
+                    paymentStatus.className = 'alert alert-danger';
+                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number';
+                    return;
+                }
+
+                let formattedPhone = phone;
+                if (formattedPhone.startsWith('0')) {
+                    formattedPhone = '254' + formattedPhone.substring(1);
+                } else if (!formattedPhone.startsWith('254')) {
+                    formattedPhone = '254' + formattedPhone;
+                }
+
+                confirmPayment.disabled = true;
+                confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending STK Push...';
+                paymentStatus.style.display = 'block';
+                paymentStatus.className = 'alert alert-success';
+                paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> STK Push request sent. Check your phone to complete payment.';
+
+                fetch('mpesa_pay.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'payment_type=continuation&appointment_id=<?php echo $appointment['id']; ?>&phone_number=' + formattedPhone
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        paymentStatus.className = 'alert alert-success';
+                        paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
+                        payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
+                        payNowBtn.disabled = true;
+                    } else {
+                        paymentStatus.className = 'alert alert-danger';
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                        confirmPayment.disabled = false;
+                        confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                    }
+                })
+                .catch(error => {
+                    paymentStatus.className = 'alert alert-danger';
+                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+                    confirmPayment.disabled = false;
+                    confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                });
+            });
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === paymentModal) {
+                paymentModal.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>

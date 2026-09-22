@@ -12,6 +12,27 @@ if ($isLoggedIn) {
     $user_id = null;
 }
 
+// Payment status from session
+$paymentSuccess = $_SESSION['mpesa_payment_success'] ?? '';
+unset($_SESSION['mpesa_payment_success']);
+
+// Appointment ID from session (set after form submission)
+$createdAppointmentId = $_SESSION['booking_appointment_id'] ?? null;
+unset($_SESSION['booking_appointment_id']);
+
+// Flash messages from session
+if (isset($_SESSION['success'])) {
+    $success = $_SESSION['success'];
+    unset($_SESSION['success']);
+}
+if (isset($_SESSION['error'])) {
+    $error = $_SESSION['error'];
+    unset($_SESSION['error']);
+}
+
+// Payment amount constant
+define('BOOKING_FEE', 500);
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
@@ -71,8 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 );
                 
                 // Set flash message and redirect to client dashboard
-                $_SESSION['success'] = 'Appointment booked successfully! You will receive a notification once reviewed.';
-                header("Location: client_dashboard.php");
+                $_SESSION['success'] = 'Appointment booked successfully! Proceed to payment.';
+                $_SESSION['booking_appointment_id'] = $result ? getLastId() : null;
+                header("Location: book_appointment.php?payment=1");
                 exit();
             } else {
                 $error = 'Failed to book appointment. Please try again.';
@@ -118,12 +140,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         /* Header */
         header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1rem 5%;
+            padding: 1rem 0;
             position: fixed;
-            width: 100%;
+            left: 0;
+            right: 0;
             top: 0;
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
         .navbar {
@@ -453,30 +482,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <!-- Header -->
     <header>
-        <nav class="navbar">
-            <div class="logo">
-                <i class="fas fa-gavel"></i>
-                <span>Justice Law</span>
-            </div>
-            <ul class="nav-links">
-                <li><a href="index.php">Home</a></li>
-                <li><a href="about.php">About</a></li>
-                <li><a href="services.php">Services</a></li>
-                <li><a href="contact.php">Contact</a></li>
-            </ul>
-            <div class="auth-buttons">
-                <?php if(isset($_SESSION['user_id'])): ?>
-                    <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
-                    <a href="logout.php" class="btn btn-primary">Logout</a>
-                <?php else: ?>
-                    <a href="login.php" class="btn btn-outline">Login</a>
-                    <a href="register.php" class="btn btn-primary">Register</a>
-                <?php endif; ?>
-            </div>
-            <div class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </div>
-        </nav>
+        <div class="header-container">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-gavel"></i>
+                    <span>Justice Law</span>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="index.php">Home</a></li>
+                    <li><a href="about.php">About</a></li>
+                    <li><a href="services.php">Services</a></li>
+                    <li><a href="contact.php">Contact</a></li>
+                </ul>
+                <div class="auth-buttons">
+                    <?php if(isset($_SESSION['user_id'])): ?>
+                        <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
+                        <a href="logout.php" class="btn btn-primary">Logout</a>
+                    <?php else: ?>
+                        <a href="login.php" class="btn btn-outline">Login</a>
+                        <a href="register.php" class="btn btn-primary">Register</a>
+                    <?php endif; ?>
+                </div>
+                <div class="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </nav>
+        </div>
     </header>
 
     <!-- Booking Form -->
@@ -489,15 +520,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             
             <div class="booking-body">
+                <?php if($paymentSuccess): ?>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> <?php echo $paymentSuccess; ?>
+                    </div>
+                <?php endif; ?>
+
                 <?php if($success): ?>
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> <?php echo $success; ?>
                     </div>
                 <?php endif; ?>
-                
+
                 <?php if($error): ?>
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if($createdAppointmentId): ?>
+                    <div class="payment-section" style="background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; border: 2px dashed var(--accent);">
+                        <h3 style="color: var(--primary); margin-bottom: 0.75rem; font-size: 1.1rem;">
+                            <i class="fas fa-mobile-alt"></i> Complete Your Payment
+                        </h3>
+                        <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
+                            Booking fee: <strong>KSh <?php echo number_format(BOOKING_FEE); ?></strong> (Pay via M-Pesa)
+                        </p>
+                        <button class="submit-btn" id="payNowBtn" style="max-width: 300px; margin: 0 auto;">
+                            <i class="fas fa-money-bill-wave"></i> Pay Now
+                        </button>
+                    </div>
+
+                    <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+                        <div style="background:var(--white); border-radius:20px; padding:2rem; max-width:450px; width:90%; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                            <div style="text-align:center; margin-bottom:1.5rem;">
+                                <i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i>
+                                <h3 style="color:var(--primary);">M-Pesa STK Push Payment</h3>
+                                <p style="color:var(--gray); font-size:0.9rem;">Enter your M-Pesa number to pay KSh <?php echo number_format(BOOKING_FEE); ?></p>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1.5rem;">
+                                <label for="mpesaPhone" style="display:block; color:var(--primary); font-weight:600; margin-bottom:0.5rem;">
+                                    <i class="fas fa-phone"></i> M-Pesa Phone Number
+                                </label>
+                                <input type="tel" id="mpesaPhone" placeholder="2547XXXXXXXX"
+                                       style="width:100%; padding:0.8rem; border:2px solid var(--light-gray); border-radius:8px; font-size:1rem; text-align:center;">
+                            </div>
+                            <div id="paymentStatus" style="display:none; text-align:center; padding:1rem; margin-bottom:1rem; border-radius:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7;"></div>
+                            <div style="display:flex; gap:1rem;">
+                                <button class="btn btn-back" id="cancelPayment" style="flex:1;">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                <button class="btn btn-primary" id="confirmPayment" style="flex:1;">
+                                    <i class="fas fa-check"></i> Pay
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 <?php endif; ?>
 
@@ -670,6 +747,88 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         mobileMenuBtn.addEventListener('click', () => {
             navLinks.classList.toggle('active');
+        });
+
+        // Payment Modal Logic
+        const payNowBtn = document.getElementById('payNowBtn');
+        const paymentModal = document.getElementById('paymentModal');
+        const cancelPayment = document.getElementById('cancelPayment');
+        const confirmPayment = document.getElementById('confirmPayment');
+        const paymentStatus = document.getElementById('paymentStatus');
+
+        if (payNowBtn) {
+            payNowBtn.addEventListener('click', function() {
+                paymentModal.style.display = 'flex';
+                paymentStatus.style.display = 'none';
+                paymentStatus.innerHTML = '';
+                paymentStatus.className = '';
+            });
+        }
+
+        if (cancelPayment) {
+            cancelPayment.addEventListener('click', function() {
+                paymentModal.style.display = 'none';
+            });
+        }
+
+        if (confirmPayment) {
+            confirmPayment.addEventListener('click', function() {
+                const phone = document.getElementById('mpesaPhone').value.replace(/\D/g, '');
+                if (!phone || phone.length < 9) {
+                    paymentStatus.style.display = 'block';
+                    paymentStatus.className = 'alert alert-danger';
+                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number';
+                    return;
+                }
+
+                let formattedPhone = phone;
+                if (formattedPhone.startsWith('0')) {
+                    formattedPhone = '254' + formattedPhone.substring(1);
+                } else if (!formattedPhone.startsWith('254')) {
+                    formattedPhone = '254' + formattedPhone;
+                }
+
+                confirmPayment.disabled = true;
+                confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending STK Push...';
+                paymentStatus.style.display = 'block';
+                paymentStatus.className = 'alert';
+                paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> Sending STK Push...';
+
+                fetch('mpesa_pay.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'payment_type=booking&appointment_id=<?php echo $createdAppointmentId; ?>&phone_number=' + formattedPhone
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        paymentStatus.className = 'alert alert-success';
+                        paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
+                        payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
+                        payNowBtn.disabled = true;
+                    } else {
+                        paymentStatus.className = 'alert alert-danger';
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                        confirmPayment.disabled = false;
+                        confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                    }
+                })
+                .catch(error => {
+                    paymentStatus.className = 'alert alert-danger';
+                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+                    confirmPayment.disabled = false;
+                    confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                });
+            });
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === paymentModal) {
+                paymentModal.style.display = 'none';
+            }
         });
     </script>
 </body>

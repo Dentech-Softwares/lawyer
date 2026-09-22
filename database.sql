@@ -60,6 +60,20 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Payments table
+CREATE TABLE IF NOT EXISTS payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT,
+    checkout_request_id VARCHAR(255) UNIQUE,
+    merchant_request_id VARCHAR(255),
+    amount DECIMAL(10,2) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    mpesa_receipt_number VARCHAR(100),
+    status ENUM('PENDING', 'COMPLETED', 'FAILED') DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+);
+
 -- Insert admin user (username: Dennis Njenga, email: admin@justicelawfirm.com, password: 2060)
 INSERT INTO admin_users (username, email, password) VALUES 
 ('Dennis Njenga', 'admin@justicelawfirm.com', '$2y$10$ZdhjGMEAX33SLq7LiIMUiO.5YqojNnHPE2Z3xgWxdDJGjqBgPJUwS');

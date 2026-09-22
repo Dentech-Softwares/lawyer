@@ -647,12 +647,14 @@ $unreadAdminNotifications = getRow(
                                                     <i class="fas fa-times"></i>
                                                 </a>
                                             <?php endif; ?>
+                                            <a href="admin_schedule.php" class="btn-icon btn-view" title="Schedule Continuation">
+                                                <i class="fas fa-clock"></i>
+                                            </a>
                                             <?php if($apt['status'] == 'approved'): ?>
                                                 <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=complete" class="btn-icon btn-complete" title="Mark Complete">
                                                     <i class="fas fa-check-double"></i>
                                                 </a>
                                             <?php endif; ?>
-                                            </button>
                                             <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
                                                 <i class="fas fa-eye"></i>
                                             </a>

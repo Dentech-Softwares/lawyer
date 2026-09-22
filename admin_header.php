@@ -293,13 +293,15 @@
                 <div class="notification-list">
                     <?php if(!empty($adminNotifications)): ?>
                         <?php foreach($adminNotifications as $notif): ?>
-                            <div class="notification-item unread">
-                                <i class="fas fa-bell"></i>
-                                <div>
-                                    <p>New appointment request from <?php echo htmlspecialchars($notif['client_name']); ?> - <?php echo htmlspecialchars($notif['case_type']); ?></p>
-                                    <small><?php echo date('M d, Y h:i A', strtotime($notif['created_at'])); ?></small>
+                            <a href="admin_schedule.php" style="text-decoration: none; color: inherit; display: block; padding: 0.8rem 1rem; border-bottom: 1px solid var(--light-gray); cursor: pointer;">
+                                <div class="notification-item unread" style="padding: 0; border: none;">
+                                    <i class="fas fa-bell"></i>
+                                    <div>
+                                        <p>New appointment request from <?php echo htmlspecialchars($notif['client_name']); ?> - <?php echo htmlspecialchars($notif['case_type']); ?></p>
+                                        <small><?php echo date('M d, Y h:i A', strtotime($notif['created_at'])); ?></small>
+                                    </div>
                                 </div>
-                            </div>
+                            </a>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <div class="notification-item">

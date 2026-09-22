@@ -36,12 +36,18 @@ require_once 'db.php';
         /* Header & Navigation */
         header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1rem 5%;
+            padding: 1rem 0;
             position: fixed;
             width: 100%;
             top: 0;
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
         .navbar {
@@ -551,7 +557,8 @@ require_once 'db.php';
 <body>
     <!-- Header -->
     <header>
-        <nav class="navbar">
+        <div class="header-container">
+            <nav class="navbar">
             <div class="logo">
                 <i class="fas fa-gavel"></i>
                 <span>Justice Law</span>
@@ -575,6 +582,7 @@ require_once 'db.php';
                 <i class="fas fa-bars"></i>
             </div>
         </nav>
+        </div>
     </header>
 
     <!-- Page Title -->
