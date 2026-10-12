@@ -88,6 +88,7 @@ $unreadAdminNotifications = getRow(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule Appointments - Justice Law Firm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -116,93 +117,8 @@ $unreadAdminNotifications = getRow(
             color: var(--dark);
         }
 
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            min-height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            padding: 2rem 0;
-        }
-
-        .sidebar-admin {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
-        }
-
-        .sidebar-admin h2 {
-            color: var(--white);
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.8rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .sidebar-admin h2 i {
-            color: var(--accent);
-        }
-
-        .sidebar-admin img {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: 3px solid var(--accent);
-            margin-bottom: 0.8rem;
-        }
-
-        .sidebar-admin h3 {
-            color: var(--white);
-            font-size: 1.1rem;
-        }
-
-        .sidebar-admin p {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.85rem;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 0 1rem;
-        }
-
-        .sidebar-menu li {
-            margin-bottom: 0.5rem;
-        }
-
-        .sidebar-menu a {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background: rgba(255,255,255,0.1);
-            color: var(--white);
-        }
-
-        .sidebar-menu a.active {
-            border-left: 3px solid var(--accent);
-        }
-
-        .sidebar-menu a i {
-            width: 20px;
-            text-align: center;
-        }
-
         .main-content {
-            margin-left: 280px;
+            margin-left: var(--sidebar-width);
             padding: 2rem;
         }
 
@@ -270,30 +186,41 @@ $unreadAdminNotifications = getRow(
             overflow-x: auto;
         }
 
-        table {
+        .continuations-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
+        .continuations-table th,
+        .continuations-table td {
             padding: 1rem 1.5rem;
             text-align: left;
         }
 
-        th {
+        .continuations-table th {
             background: var(--light-gray);
             color: var(--primary);
             font-weight: 600;
             font-size: 0.9rem;
+            border-bottom: 2px solid var(--light-gray);
         }
 
-        td {
+        .continuations-table td {
             border-bottom: 1px solid var(--light-gray);
             color: var(--dark);
         }
 
-        tr:hover {
-            background: var(--light-gray);
+        .continuations-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .continuations-table tbody tr:hover {
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .continuations-table tbody tr:last-child td {
+            border-bottom: none;
         }
 
         .status-badge {
@@ -307,92 +234,6 @@ $unreadAdminNotifications = getRow(
         .status-badge.pending {
             background: rgba(214, 158, 46, 0.1);
             color: var(--warning);
-        }
-
-        .status-badge.approved {
-            background: rgba(56, 161, 105, 0.1);
-            color: var(--success);
-        }
-
-        .form-input {
-            padding: 0.6rem 0.8rem;
-            border: 2px solid var(--light-gray);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
-        }
-
-        .schedule-form {
-            display: flex;
-            gap: 0.5rem;
-            align-items: flex-end;
-        }
-
-        .schedule-form .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-        }
-
-        .schedule-form .form-group label {
-            font-size: 0.72rem;
-            color: var(--gray);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .schedule-form .form-input {
-            min-width: 120px;
-        }
-
-        .btn-schedule {
-            padding: 0.6rem 1rem;
-            background: var(--accent);
-            color: var(--primary);
-            border: none;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            white-space: nowrap;
-        }
-
-        .btn-schedule:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(212, 175, 55, 0.3);
-        }
-
-        .btn-view {
-            background: var(--light-gray);
-            color: var(--primary);
-            border: none;
-            padding: 0.4rem 0.7rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-view:hover {
-            background: var(--info);
-            color: var(--white);
         }
 
         .empty-state {
@@ -447,46 +288,18 @@ $unreadAdminNotifications = getRow(
                 align-items: flex-start;
             }
 
-            th, td {
+            .continuations-table th,
+            .continuations-table td {
                 padding: 0.8rem 1rem;
-            }
-
-            .schedule-form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .schedule-form .form-input {
-                width: 100%;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-admin">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
-            <h3>Dennis Njenga</h3>
-            <p>Administrator</p>
-        </div>
-
-        <ul class="sidebar-menu">
-            <li><a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
-            <li><a href="manage_appointments.php"><i class="fas fa-calendar"></i> Appointments</a></li>
-            <li><a href="admin_schedule.php" class="active"><i class="fas fa-clock"></i> Schedule Continuations</a></li>
-            <li><a href="manage_clients.php"><i class="fas fa-users"></i> Clients</a></li>
-            <li><a href="manage_documents.php"><i class="fas fa-file-alt"></i> Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> View Website</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </aside>
+    <?php
+    $sidebar_role = 'admin';
+    include 'includes/sidebar.php';
+    ?>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -513,58 +326,42 @@ $unreadAdminNotifications = getRow(
 
             <div class="table-container">
                 <?php if(!empty($pendingAppointments)): ?>
-                    <?php foreach($pendingAppointments as $apt): ?>
-                        <form method="POST" action="admin_schedule.php" style="border-bottom: 1px solid var(--light-gray);">
-                            <input type="hidden" name="schedule_id" value="<?php echo $apt['id']; ?>">
-                            <table style="margin-bottom: 0;">
-                                <thead>
-                                    <tr>
-                                        <th>Case #</th>
-                                        <th>Client</th>
-                                        <th>Case Type</th>
-                                        <th>Current Date</th>
-                                        <th>New Date</th>
-                                        <th>New Time</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><strong>#<?php echo $apt['id']; ?></strong></td>
-                                        <td>
-                                            <strong><?php echo htmlspecialchars($apt['client_name']); ?></strong><br>
-                                            <small><?php echo htmlspecialchars($apt['client_email']); ?></small>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
-                                        <td>
-                                            <?php echo date('M d, Y', strtotime($apt['date'])); ?><br>
-                                            <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
-                                        </td>
-                                        <td>
-                                            <div class="form-group" style="margin-bottom: 0;">
-                                                <input type="date" name="schedule_date" class="form-input" required>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="form-group" style="margin-bottom: 0;">
-                                                <input type="time" name="schedule_time" class="form-input" required>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                                <button type="submit" name="schedule_action" class="btn-schedule">
-                                                    <i class="fas fa-calendar-plus"></i> Schedule
-                                                </button>
-                                                <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-view" title="View Notes">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </form>
-                    <?php endforeach; ?>
+                    <table class="continuations-table">
+                        <thead>
+                            <tr>
+                                <th>Case #</th>
+                                <th>Client</th>
+                                <th>Case Type</th>
+                                <th>Current Date</th>
+                                <th>Status</th>
+                                <th style="width: 60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($pendingAppointments as $apt): ?>
+                            <tr onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'" style="cursor: pointer;">
+                                <td><strong>#<?php echo $apt['id']; ?></strong></td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($apt['client_name']); ?></strong><br>
+                                    <small><?php echo htmlspecialchars($apt['client_email']); ?></small>
+                                </td>
+                                <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
+                                <td>
+                                    <?php echo date('M d, Y', strtotime($apt['date'])); ?><br>
+                                    <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
+                                </td>
+                                <td>
+                                    <span class="status-badge pending">Pending</span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <a href="appointment_details.php?id=<?php echo $apt['id']; ?>" class="btn-view" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 <?php else: ?>
                     <div class="empty-state">
                         <i class="fas fa-check-circle"></i>
@@ -580,13 +377,6 @@ $unreadAdminNotifications = getRow(
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
         }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.querySelectorAll('input[type="date"]').forEach(input => {
-                input.setAttribute('min', today);
-            });
-        });
     </script>
 </body>
 </html>

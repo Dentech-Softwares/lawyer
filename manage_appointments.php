@@ -68,6 +68,7 @@ $unreadAdminNotifications = getRow(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Appointments - Justice Law Firm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -96,95 +97,9 @@ $unreadAdminNotifications = getRow(
             color: var(--dark);
         }
 
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            min-height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            padding: 2rem 0;
-        }
-
-        .sidebar-admin {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
-        }
-
-        .sidebar-admin h2 {
-            color: var(--white);
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.8rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .sidebar-admin h2 i {
-            color: var(--accent);
-        }
-
-        .sidebar-admin img {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: 3px solid var(--accent);
-            margin-bottom: 0.8rem;
-        }
-
-        .sidebar-admin h3 {
-            color: var(--white);
-            font-size: 1.1rem;
-        }
-
-        .sidebar-admin p {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.85rem;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 0 1rem;
-        }
-
-        .sidebar-menu li {
-            margin-bottom: 0.5rem;
-        }
-
-        .sidebar-menu a {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background: rgba(255,255,255,0.1);
-            color: var(--white);
-        }
-
-        .sidebar-menu a.active {
-            border-left: 3px solid var(--accent);
-        }
-
-        .sidebar-menu a i {
-            width: 20px;
-            text-align: center;
-        }
-
         /* Main Content */
         .main-content {
-            margin-left: 280px;
+            margin-left: var(--sidebar-width);
             padding: 2rem;
         }
 
@@ -310,30 +225,40 @@ $unreadAdminNotifications = getRow(
             overflow-x: auto;
         }
 
-        table {
+        table.appointments-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
+        table.appointments-table th,
+        table.appointments-table td {
             padding: 1rem 1.5rem;
             text-align: left;
         }
 
-        th {
+        table.appointments-table th {
             background: var(--light-gray);
             color: var(--primary);
             font-weight: 600;
             font-size: 0.9rem;
         }
 
-        td {
+        table.appointments-table td {
             border-bottom: 1px solid var(--light-gray);
             color: var(--dark);
         }
 
-        tr:hover {
+        table.appointments-table tr.appointment-row {
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        table.appointments-table tr.appointment-row:hover {
             background: var(--light-gray);
+        }
+
+        table.appointments-table tr.appointment-row:active {
+            background: #e8eef5;
         }
 
         .status-badge {
@@ -513,29 +438,10 @@ $unreadAdminNotifications = getRow(
     </style>
 </head>
 <body>
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-admin">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-            <img src="https://ui-avatars.com/api/?name=Dennis+Njenga&background=d4af37&color=1a3a5c" alt="Admin">
-            <h3>Dennis Njenga</h3>
-            <p>Administrator</p>
-        </div>
-
-        <ul class="sidebar-menu">
-            <li><a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
-            <li><a href="manage_appointments.php" class="active"><i class="fas fa-calendar"></i> Appointments</a></li>
-            <li><a href="manage_clients.php"><i class="fas fa-users"></i> Clients</a></li>
-            <li><a href="manage_documents.php"><i class="fas fa-file-alt"></i> Documents</a></li>
-            <li><a href="index.php"><i class="fas fa-globe"></i> View Website</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </aside>
+    <?php
+    $sidebar_role = 'admin';
+    include 'includes/sidebar.php';
+    ?>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -578,7 +484,7 @@ $unreadAdminNotifications = getRow(
         <div class="section-card">
             <div class="table-container">
                 <?php if(!empty($appointments)): ?>
-                    <table>
+                    <table class="appointments-table">
                         <thead>
                                 <tr>
                                     <th>Client Info</th>
@@ -586,12 +492,11 @@ $unreadAdminNotifications = getRow(
                                     <th>Date & Time</th>
                                     <th>Message</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
                                 </tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
-                                <tr>
+                                <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
                                     <td>
                                         <strong><?php echo htmlspecialchars($apt['client_name']); ?></strong><br>
                                         <small><?php echo htmlspecialchars($apt['client_email']); ?></small><br>
@@ -606,31 +511,10 @@ $unreadAdminNotifications = getRow(
                                          <?php echo htmlspecialchars(substr($apt['message'] ?? '', 0, 40)); ?>
                                          <?php echo strlen($apt['message'] ?? '') > 40 ? '...' : ''; ?>
                                      </td>
-                                     <td>
-                                         <span class="status-badge <?php echo $apt['status']; ?>">
-                                            <?php echo ucfirst($apt['status']); ?>
-                                        </span>
-                                    </td>
-                                     <td>
-                                          <div class="action-buttons">
-                                              <?php if($apt['status'] == 'pending'): ?>
-                                                  <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=approve" class="btn-icon btn-approve" title="Approve">
-                                                      <i class="fas fa-check"></i>
-                                                  </a>
-                                                  <a href="update_appointment.php?id=<?php echo $apt['id']; ?>&action=reject" class="btn-icon btn-reject" title="Reject">
-                                                      <i class="fas fa-times"></i>
-                                                  </a>
-                                              <?php endif; ?>
-                                              <a href="admin_schedule.php" class="btn-icon btn-view" title="Schedule Continuation">
-                                                  <i class="fas fa-clock"></i>
-                                              </a>
-                                              <a href="delete_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this appointment?');">
-                                                  <i class="fas fa-trash"></i>
-                                              </a>
-                                              <a href="appointment_notes.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Notes">
-                                                  <i class="fas fa-eye"></i>
-                                              </a>
-                                          </div>
+<td>
+                                          <span class="status-badge <?php echo $apt['status']; ?>">
+                                             <?php echo ucfirst($apt['status']); ?>
+                                         </span>
                                      </td>
                                 </tr>
                             <?php endforeach; ?>

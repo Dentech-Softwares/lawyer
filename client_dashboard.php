@@ -57,6 +57,7 @@ if (isset($_GET['mark_read'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Justice Law Firm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -84,99 +85,6 @@ if (isset($_GET['mark_read'])) {
             background-color: var(--light-gray);
             color: var(--dark);
             line-height: 1.6;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            min-height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            padding: 2rem 0;
-            transition: all 0.3s ease;
-        }
-
-        .sidebar-user {
-            text-align: center;
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 1.5rem;
-        }
-
-        .sidebar-user h2 {
-            color: var(--white);
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.8rem;
-            margin-bottom: 1rem;
-        }
-
-        .sidebar-user h2 i {
-            color: var(--accent);
-        }
-
-        .sidebar-user img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 3px solid var(--accent);
-            margin-bottom: 1rem;
-        }
-
-        .sidebar-user h3 {
-            color: var(--white);
-            font-size: 1.1rem;
-        }
-
-        .sidebar-user p {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.9rem;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 0 1rem;
-        }
-
-        .sidebar-menu li {
-            margin-bottom: 0.5rem;
-        }
-
-        .sidebar-menu a {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background: rgba(255,255,255,0.1);
-            color: var(--white);
-        }
-
-        .sidebar-menu a.active {
-            border-left: 3px solid var(--accent);
-        }
-
-        .sidebar-menu a i {
-            width: 20px;
-            text-align: center;
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 280px;
-            padding: 2rem;
         }
 
         .header {
@@ -593,30 +501,40 @@ if (isset($_GET['mark_read'])) {
             overflow-x: auto;
         }
 
-        table {
+        table.appointments-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
+        table.appointments-table th,
+        table.appointments-table td {
             padding: 1rem 1.5rem;
             text-align: left;
         }
 
-        th {
+        table.appointments-table th {
             background: var(--light-gray);
             color: var(--primary);
             font-weight: 600;
             font-size: 0.9rem;
         }
 
-        td {
+        table.appointments-table td {
             border-bottom: 1px solid var(--light-gray);
             color: var(--dark);
         }
 
-        tr:hover {
+        table.appointments-table tr.appointment-row {
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        table.appointments-table tr.appointment-row:hover {
             background: var(--light-gray);
+        }
+
+        table.appointments-table tr.appointment-row:active {
+            background: #e8eef5;
         }
 
         .status-badge {
@@ -779,28 +697,10 @@ if (isset($_GET['mark_read'])) {
     </style>
 </head>
 <body>
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Sidebar -->
-     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-user">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-            <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_name); ?>&background=d4af37&color=1a3a5c" alt="User">
-            <h3><?php echo htmlspecialchars($user_name); ?></h3>
-            <p>Client Account</p>
-        </div>
-
-        <ul class="sidebar-menu">
-            <li><a href="client_dashboard.php" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
-            <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
-            <li><a href="client_appointments.php"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
-            <li><a href="client_documents.php"><i class="fas fa-file-alt"></i> My Documents</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </aside>
+    <?php
+    $sidebar_role = 'client';
+    include 'includes/sidebar.php';
+    ?>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -869,7 +769,7 @@ if (isset($_GET['mark_read'])) {
             
             <div class="table-container">
                 <?php if(!empty($appointments)): ?>
-                    <table>
+                    <table class="appointments-table">
                         <thead>
                             <tr>
                                 <th>Case Type</th>
@@ -879,42 +779,42 @@ if (isset($_GET['mark_read'])) {
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php foreach($appointments as $apt): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
-                                    <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
-                                      <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
-                                      <td>
-                                          <span class="status-badge <?php echo $apt['status']; ?>">
-                                             <?php echo ucfirst($apt['status']); ?>
-                                          </span>
-                                      </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                         <?php if($apt['status'] == 'approved' || $apt['status'] == 'completed'): ?>
-                                             <a href="continue_case.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="View Details">
-                                                 <i class="fas fa-eye"></i>
-                                             </a>
-                                         <?php else: ?>
-                                             <span class="btn-icon" style="visibility: hidden;"><i class="fas fa-eye"></i></span>
-                                         <?php endif; ?>
-                                         <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank">
-                                             <i class="fas fa-print"></i>
-                                         </a>
-                                            <?php if($apt['status'] == 'pending'): ?>
-                                                <button class="btn-icon btn-edit" title="Edit" onclick="editAppointment(<?php echo $apt['id']; ?>)">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn-icon btn-delete" title="Cancel" onclick="cancelAppointment(<?php echo $apt['id']; ?>)">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
+<tbody>
+                              <?php foreach($appointments as $apt): ?>
+                                  <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
+                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
+                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
+                                       <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
+                                       <td>
+                                           <span class="status-badge <?php echo $apt['status']; ?>">
+                                              <?php echo ucfirst($apt['status']); ?>
+                                           </span>
+                                       </td>
+                                     <td>
+                                         <div class="action-buttons">
+                                          <?php if($apt['status'] == 'approved' || $apt['status'] == 'completed'): ?>
+                                              <a href="continue_case.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="View Details" onclick="event.stopPropagation();">
+                                                  <i class="fas fa-eye"></i>
+                                              </a>
+                                          <?php else: ?>
+                                              <span class="btn-icon" style="visibility: hidden;"><i class="fas fa-eye"></i></span>
+                                          <?php endif; ?>
+                                          <a href="print_appointment.php?id=<?php echo $apt['id']; ?>" class="btn-icon btn-view" title="Print" target="_blank" onclick="event.stopPropagation();">
+                                              <i class="fas fa-print"></i>
+                                          </a>
+                                             <?php if($apt['status'] == 'pending'): ?>
+                                                 <button class="btn-icon btn-edit" title="Edit" onclick="event.stopPropagation(); editAppointment(<?php echo $apt['id']; ?>)">
+                                                     <i class="fas fa-edit"></i>
+                                                 </button>
+                                                 <button class="btn-icon btn-delete" title="Cancel" onclick="event.stopPropagation(); cancelAppointment(<?php echo $apt['id']; ?>)">
+                                                     <i class="fas fa-times"></i>
+                                                 </button>
+                                             <?php endif; ?>
+                                         </div>
+                                     </td>
+                                 </tr>
+                             <?php endforeach; ?>
+                         </tbody>
                     </table>
                 <?php else: ?>
                     <div class="empty-state">

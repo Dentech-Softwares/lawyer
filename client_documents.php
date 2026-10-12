@@ -73,8 +73,9 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Documents - Justice Law Firm</title>
+<title>My Documents - Justice Law Firm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -91,21 +92,7 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--light-gray); color: var(--dark); }
 
-        .sidebar { width: 280px; background: linear-gradient(135deg, var(--primary), var(--secondary)); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 1000; padding: 2rem 0; }
-        .sidebar-user { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
-        .sidebar-user h2 { color: var(--white); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-bottom: 1rem; }
-        .sidebar-user h2 i { color: var(--accent); }
-        .sidebar-user img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 1rem; }
-        .sidebar-user h3 { color: var(--white); font-size: 1.1rem; }
-        .sidebar-user p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
-        .sidebar-menu { list-style: none; padding: 0 1rem; }
-        .sidebar-menu li { margin-bottom: 0.5rem; }
-        .sidebar-menu a { display: flex; align-items: center; gap: 1rem; padding: 1rem; color: rgba(255,255,255,0.8); text-decoration: none; border-radius: 8px; transition: 0.3s; }
-        .sidebar-menu a:hover, .sidebar-menu a.active { background: rgba(255,255,255,0.1); color: var(--white); }
-        .sidebar-menu a.active { border-left: 3px solid var(--accent); }
-        .sidebar-menu a i { width: 20px; text-align: center; }
-
-        .main-content { margin-left: 280px; padding: 2rem; }
+        .main-content { margin-left: var(--sidebar-width); padding: 2rem; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .header h1 { color: var(--primary); font-size: 1.8rem; }
         .logout-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: var(--danger); color: var(--white); text-decoration: none; border-radius: 8px; }
@@ -157,23 +144,10 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
     </style>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-
-     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-user">
-            <h2><i class="fas fa-gavel"></i> Justice Law</h2>
-            <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_name); ?>&background=d4af37&color=1a3a5c" alt="User">
-            <h3><?php echo htmlspecialchars($user_name); ?></h3>
-            <p>Client Account</p>
-        </div>
-        <ul class="sidebar-menu">
-            <li><a href="client_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
-            <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
-            <li><a href="client_appointments.php"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
-            <li><a href="client_documents.php" class="active"><i class="fas fa-file-alt"></i> My Documents</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </aside>
+    <?php
+    $sidebar_role = 'client';
+    include 'includes/sidebar.php';
+    ?>
 
     <main class="main-content">
         <?php include 'client_header.php'; ?>
