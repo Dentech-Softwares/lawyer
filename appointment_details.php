@@ -68,72 +68,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_notes'])) {
 
 // Header data based on role
 if ($isAdmin) {
-    $header_username = $_SESSION['admin_username'];
-    $header_email = $_SESSION['admin_email'] ?? '';
-    $header_names = explode(' ', $header_username);
-    $header_initials = strtoupper(substr($header_names[0], 0, 1) . (isset($header_names[1]) ? substr($header_names[1], 0, 1) : ''));
-    $header_role = 'Administrator';
-    $header_avatar = "https://ui-avatars.com/api/?name=" . urlencode($header_username) . "&background=d4af37&color=1a3a5c";
-    $header_dashboard = 'admin_dashboard.php';
-    $header_appointments = 'manage_appointments.php';
-    $header_clients = 'manage_clients.php';
-    $header_documents = 'manage_documents.php';
-    $header_logout = 'logout.php';
-    $sidebar_class = 'sidebar-admin';
-    $sidebar_menu = '
-        <li><a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
-        <li><a href="manage_appointments.php" class="active"><i class="fas fa-calendar"></i> Appointments</a></li>
-        <li><a href="manage_clients.php"><i class="fas fa-users"></i> Clients</a></li>
-        <li><a href="manage_documents.php"><i class="fas fa-file-alt"></i> Documents</a></li>
-        <li><a href="index.php"><i class="fas fa-globe"></i> View Website</a></li>
-        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>';
-} else {
-    $header_username = $_SESSION['user_name'];
-    $header_email = $_SESSION['user_email'] ?? '';
-    $header_names = explode(' ', $header_username);
-    $header_initials = strtoupper(substr($header_names[0], 0, 1) . (isset($header_names[1]) ? substr($header_names[1], 0, 1) : ''));
-    $header_role = 'Client Account';
-    $header_avatar = "https://ui-avatars.com/api/?name=" . urlencode($header_username) . "&background=d4af37&color=1a3a5c";
-    $header_dashboard = 'client_dashboard.php';
-    $header_appointments = 'client_appointments.php';
-    $header_clients = '';
-    $header_documents = 'client_documents.php';
-    $header_logout = 'logout.php';
-    $sidebar_class = 'sidebar-user';
-    $sidebar_menu = '
-        <li><a href="client_dashboard.php"><i class="fas fa-home"></i> Dashboard</a></li>
-        <li><a href="book_appointment.php"><i class="fas fa-calendar-plus"></i> Book Appointment</a></li>
-        <li><a href="client_appointments.php"><i class="fas fa-calendar-check"></i> My Appointments</a></li>
-        <li><a href="client_documents.php"><i class="fas fa-file-alt"></i> My Documents</a></li>
-        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>';
-}
-
-$current_date = date('F j, Y');
-
-// Get notifications
-if ($isAdmin) {
-    $notifications = getAllRows(
+    $admin_username = $_SESSION['admin_username'];
+    $admin_email = $_SESSION['admin_email'] ?? '';
+    $current_date = date('F j, Y');
+    
+    $adminNotifications = getAllRows(
         "SELECT a.id, u.name as client_name, a.case_type, a.created_at
          FROM appointments a
          JOIN users u ON a.user_id = u.id
          WHERE a.status = 'pending' 
          ORDER BY a.created_at DESC LIMIT 5"
     );
-    $unreadNotifications = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+    $unreadAdminNotifications = getRow(
+        "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+        [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
     );
+    $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?", [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00'])['count'] ?? 0;
 } else {
+    $user_id = $_SESSION['user_id'];
+    $user_name = $_SESSION['user_name'];
+    $user_email = $_SESSION['user_email'] ?? '';
+    $current_date = date('F j, Y');
+    $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
+    
     $notifications = getAllRows(
         "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
-        [$_SESSION['user_id']]
+        [$user_id]
     );
     $unreadNotifications = getRow(
         "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND status = 'unread'",
-        [$_SESSION['user_id']]
+        [$user_id]
     );
+    $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00'])['count'] ?? 0;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -635,6 +603,9 @@ if ($isAdmin) {
 <body>
     <?php
     $sidebar_role = $isAdmin ? 'admin' : 'client';
+    $sidebar_badges = $isAdmin 
+        ? ['appointments' => $pendingAppointmentsCount, 'schedule' => $pendingAppointmentsCount]
+        : ['appointments' => $userPendingCount];
     include 'includes/sidebar.php';
     ?>
 
@@ -816,11 +787,82 @@ if ($isAdmin) {
         <div class="card">
             <div class="card-header">
                 <h2><i class="fas fa-file-alt"></i> Uploaded Documents</h2>
-                <a href="manage_documents.php" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-                    <i class="fas fa-plus"></i> Upload New
-                </a>
             </div>
             <div class="card-body">
+                <!-- Upload Form -->
+                <div class="upload-section" style="background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-cloud-upload-alt"></i> Upload New Document</h3>
+                    <form method="POST" action="" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                        <input type="hidden" name="appointment_id" value="<?php echo (int)$appointment['id']; ?>">
+                        <div class="form-group" style="flex: 1; min-width: 250px;">
+                            <label for="document" style="display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">Select File (PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</label>
+                            <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required style="width: 100%; padding: 0.8rem; border: 2px solid var(--light-gray); border-radius: 8px;">
+                        </div>
+                        <button type="submit" name="upload_document" class="btn btn-primary" style="padding: 0.7rem 1.5rem; border-radius: 5px; font-weight: 600; transition: 0.3s; border: none; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: var(--accent); color: var(--primary);">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </form>
+                </div>
+
+                <?php
+                // Handle document upload
+                if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document']) && isset($_POST['upload_document'])) {
+                    $file = $_FILES['document'];
+                    $appointment_id = (int)$appointment['id'];
+                    
+                    if ($file['error'] === UPLOAD_ERR_OK) {
+                        $allowedTypes = [
+                            'application/pdf',
+                            'application/msword',
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'text/plain',
+                            'image/jpeg',
+                            'image/png',
+                            'image/gif'
+                        ];
+                        $allowedExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
+                        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                        
+                        $typeValid = in_array($file['type'], $allowedTypes);
+                        $extValid = in_array($fileExtension, $allowedExtensions);
+                        
+                        if ($typeValid || $extValid) {
+                            $uploadDir = 'uploads/';
+                            if (!is_dir($uploadDir)) {
+                                mkdir($uploadDir, 0755, true);
+                            }
+                            
+                            $fileName = basename($file['name']);
+                            $filePath = $uploadDir . time() . '_' . $fileName;
+                            
+                            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                                $storedType = $typeValid ? $file['type'] : mime_content_type($filePath);
+                                execute(
+                                    "INSERT INTO documents (user_id, appointment_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?, ?)",
+                                    [$appointment['user_id'], $appointment_id, $fileName, $filePath, $storedType]
+                                );
+                                // Refresh to show the new document
+                                header("Location: appointment_details.php?id={$appointment_id}&uploaded=1");
+                                exit;
+                            } else {
+                                $docUploadError = 'Failed to upload document. Check directory permissions.';
+                            }
+                        } else {
+                            $docUploadError = 'Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, GIF.';
+                        }
+                    } else {
+                        $docUploadError = 'Error uploading file. Code: ' . $file['error'];
+                    }
+                }
+                ?>
+
+                <?php if (isset($docUploadError)): ?>
+                    <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <?php echo $docUploadError; ?></div>
+                <?php endif; ?>
+                <?php if (isset($_GET['uploaded'])): ?>
+                    <div class="alert alert-success"><i class="fas fa-check-circle"></i> Document uploaded successfully!</div>
+                <?php endif; ?>
+
                 <?php if(!empty($documents)): ?>
                     <div class="table-container">
                         <table class="documents-table">
@@ -836,23 +878,36 @@ if ($isAdmin) {
                                 <?php foreach($documents as $doc): ?>
                                     <tr>
                                         <td>
-                                            <div class="document-info">
-                                                <i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i>
+                                            <div class="document-info" style="display: flex; align-items: center; gap: 1rem;">
+                                                <?php if (strpos($doc['file_type'], 'image/') === 0): ?>
+                                                    <div class="doc-icon" style="background: #e8f5e9; width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                                        <img src="<?php echo htmlspecialchars($doc['file_path']); ?>" alt="<?php echo htmlspecialchars($doc['file_name']); ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="doc-icon" style="width: 45px; height: 45px; background: rgba(212, 175, 55, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2rem;">
+                                                        <i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i>
+                                                    </div>
+                                                <?php endif; ?>
                                                 <div>
                                                     <strong><?php echo htmlspecialchars($doc['file_name']); ?></strong>
-                                                    <div class="document-date"><?php echo date('M d, Y h:i A', strtotime($doc['uploaded_at'])); ?></div>
+                                                    <div class="document-date" style="color: var(--gray); font-size: 0.85rem;"><?php echo date('M d, Y h:i A', strtotime($doc['uploaded_at'])); ?></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td><?php echo strtoupper(pathinfo($doc['file_name'], PATHINFO_EXTENSION)); ?></td>
                                         <td><?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?></td>
                                         <td>
-                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-view" download title="Download">
+                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-view" download title="Download" style="background: var(--light-gray); color: var(--primary); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-info" target="_blank" title="View">
+                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-info" target="_blank" title="View" style="background: var(--light-gray); color: var(--primary); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            <?php if ($isAdmin): ?>
+                                            <a href="delete_document.php?id=<?php echo $doc['id']; ?>&redirect=<?php echo urlencode("appointment_details.php?id={$appointment['id']}"); ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Delete this document?');" style="background: rgba(229, 62, 62, 0.1); color: var(--danger); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -860,7 +915,7 @@ if ($isAdmin) {
                         </table>
                     </div>
                 <?php else: ?>
-                    <div class="no-notes">No documents uploaded for this appointment.</div>
+                    <div class="no-notes" style="text-align: center; padding: 2rem; color: var(--gray);">No documents uploaded for this appointment.</div>
                 <?php endif; ?>
             </div>
         </div>

@@ -1,11 +1,19 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit;
 }
+
+// Calculate badge count BEFORE updating last view timestamp
+$lastView = $_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00';
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?", [$lastView])['count'] ?? 0;
+
+// NOW mark appointments as viewed (for badge clearing on NEXT visit)
+$_SESSION['admin_last_appointments_view'] = date('Y-m-d H:i:s');
 
 // Get filter values
 $statusFilter = $_GET['status'] ?? '';
@@ -45,8 +53,6 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
 // Admin header data
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
-$admin_names = explode(' ', $admin_username);
-$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
 $current_date = date('F j, Y');
 
 // Get admin notifications (pending appointment requests)
@@ -57,9 +63,12 @@ $adminNotifications = getAllRows(
      WHERE a.status = 'pending' 
      ORDER BY a.created_at DESC LIMIT 5"
 );
+$lastView = $_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00';
 $unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+    [$lastView]
 );
+$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -440,6 +449,10 @@ $unreadAdminNotifications = getRow(
 <body>
     <?php
     $sidebar_role = 'admin';
+    $sidebar_badges = [
+        'appointments' => $pendingAppointmentsCount,
+        'schedule' => $pendingAppointmentsCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 

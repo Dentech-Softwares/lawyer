@@ -843,8 +843,29 @@ define('CONTINUATION_FEE', 250);
                                 <i class="fas fa-mobile-alt"></i> Complete Your Payment
                             </h3>
                             <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
-                                Continuation fee: <strong>KSh <?php echo number_format(CONTINUATION_FEE); ?></strong> (Pay via M-Pesa)
+                                Continuation fee: <strong>KSh <?php echo number_format(CONTINUATION_FEE); ?></strong>
                             </p>
+                            
+                            <!-- Payment Method Selector -->
+                            <div class="payment-method-selector" style="margin-bottom: 1rem; text-align: left;">
+                                <label style="display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-money-bill-wave"></i> Payment Method
+                                </label>
+                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('mpesa', this)">
+                                        <input type="radio" name="payment_method" value="mpesa" id="method_mpesa" checked style="display: none;">
+                                        <i class="fas fa-mobile-alt" style="color: var(--accent); font-size: 1.2rem;"></i>
+                                        <span style="font-weight: 500;">M-Pesa</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('cash', this)">
+                                        <input type="radio" name="payment_method" value="cash" id="method_cash" style="display: none;">
+                                        <i class="fas fa-money-bill" style="color: var(--success); font-size: 1.2rem;"></i>
+                                        <span style="font-weight: 500;">Cash</span>
+                                    </label>
+                                </div>
+                                <input type="hidden" id="selected_payment_method" name="payment_method" value="mpesa">
+                            </div>
+                            
                             <button class="submit-btn" id="payNowBtn" style="max-width: 300px; margin: 0 auto;">
                                 <i class="fas fa-money-bill-wave"></i> Pay Now
                             </button>
@@ -988,6 +1009,23 @@ define('CONTINUATION_FEE', 250);
             });
         }
 
+        // Payment method selection
+        let selectedPaymentMethod = 'mpesa';
+        
+        function selectPaymentMethod(method, element) {
+            selectedPaymentMethod = method;
+            document.getElementById('selected_payment_method').value = method;
+            
+            // Update UI
+            document.querySelectorAll('.payment-method-selector label').forEach(label => {
+                label.style.borderColor = 'var(--light-gray)';
+                label.style.background = 'var(--white)';
+            });
+            
+            element.style.borderColor = 'var(--accent)';
+            element.style.background = 'rgba(212, 175, 55, 0.1)';
+        }
+
         // Payment Modal Logic
         const payNowBtn = document.getElementById('payNowBtn');
         const paymentModal = document.getElementById('paymentModal');
@@ -1001,6 +1039,28 @@ define('CONTINUATION_FEE', 250);
                 paymentStatus.style.display = 'none';
                 paymentStatus.innerHTML = '';
                 paymentStatus.className = '';
+                
+                // Update modal based on payment method
+                const modalTitle = document.querySelector('#paymentModal h3');
+                const modalDesc = document.querySelector('#paymentModal p');
+                const phoneInput = document.getElementById('mpesaPhone');
+                const phoneLabel = document.querySelector('#paymentModal label[for="mpesaPhone"]');
+                
+                if (selectedPaymentMethod === 'cash') {
+                    modalTitle.innerHTML = '<i class="fas fa-money-bill" style="font-size:2.5rem; color:var(--success); margin-bottom:0.5rem;"></i> Cash Payment';
+                    modalDesc.innerHTML = 'You selected <strong>Cash</strong> payment. Please pay KSh <?php echo number_format(CONTINUATION_FEE); ?> at the office.';
+                    phoneLabel.innerHTML = '<i class="fas fa-user"></i> Your Name (for receipt)';
+                    phoneInput.placeholder = 'Enter your name';
+                    phoneInput.type = 'text';
+                    phoneInput.style.textAlign = 'left';
+                } else {
+                    modalTitle.innerHTML = '<i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i> M-Pesa STK Push Payment';
+                    modalDesc.innerHTML = 'Enter your M-Pesa number to pay KSh <?php echo number_format(CONTINUATION_FEE); ?>';
+                    phoneLabel.innerHTML = '<i class="fas fa-phone"></i> M-Pesa Phone Number';
+                    phoneInput.placeholder = '2547XXXXXXXX';
+                    phoneInput.type = 'tel';
+                    phoneInput.style.textAlign = 'center';
+                }
             });
         }
 
@@ -1012,54 +1072,101 @@ define('CONTINUATION_FEE', 250);
 
         if (confirmPayment) {
             confirmPayment.addEventListener('click', function() {
-                const phone = document.getElementById('mpesaPhone').value.replace(/\D/g, '');
-                if (!phone || phone.length < 9) {
-                    paymentStatus.style.display = 'block';
-                    paymentStatus.className = 'alert alert-danger';
-                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number';
-                    return;
-                }
-
-                let formattedPhone = phone;
-                if (formattedPhone.startsWith('0')) {
-                    formattedPhone = '254' + formattedPhone.substring(1);
-                } else if (!formattedPhone.startsWith('254')) {
-                    formattedPhone = '254' + formattedPhone;
-                }
-
-                confirmPayment.disabled = true;
-                confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending STK Push...';
-                paymentStatus.style.display = 'block';
-                paymentStatus.className = 'alert alert-success';
-                paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> STK Push request sent. Check your phone to complete payment.';
-
-                fetch('mpesa_pay.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'payment_type=continuation&appointment_id=<?php echo $appointment['id']; ?>&phone_number=' + formattedPhone
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        paymentStatus.className = 'alert alert-success';
-                        paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
-                        payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
-                        payNowBtn.disabled = true;
-                    } else {
+                const input = document.getElementById('mpesaPhone').value.trim();
+                
+                if (selectedPaymentMethod === 'cash') {
+                    // Cash payment - just record it
+                    if (!input) {
+                        paymentStatus.style.display = 'block';
                         paymentStatus.className = 'alert alert-danger';
-                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter your name for the receipt';
+                        return;
+                    }
+                    
+                    confirmPayment.disabled = true;
+                    confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording...';
+                    paymentStatus.style.display = 'block';
+                    paymentStatus.className = 'alert alert-success';
+                    paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> Recording cash payment...';
+                    
+                    fetch('mpesa_pay.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'payment_type=continuation&appointment_id=<?php echo $appointment['id']; ?>&phone_number=' + encodeURIComponent(input) + '&payment_method=cash'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            paymentStatus.className = 'alert alert-success';
+                            paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                            payNowBtn.innerHTML = '<i class="fas fa-check"></i> Payment Recorded';
+                            payNowBtn.disabled = true;
+                        } else {
+                            paymentStatus.className = 'alert alert-danger';
+                            paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                            confirmPayment.disabled = false;
+                            confirmPayment.innerHTML = '<i class="fas fa-check"></i> Confirm';
+                        }
+                    })
+                    .catch(error => {
+                        paymentStatus.className = 'alert alert-danger';
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+                        confirmPayment.disabled = false;
+                        confirmPayment.innerHTML = '<i class="fas fa-check"></i> Confirm';
+                    });
+                } else {
+                    // M-Pesa payment
+                    const phone = input.replace(/\D/g, '');
+                    if (!phone || phone.length < 9) {
+                        paymentStatus.style.display = 'block';
+                        paymentStatus.className = 'alert alert-danger';
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number';
+                        return;
+                    }
+
+                    let formattedPhone = phone;
+                    if (formattedPhone.startsWith('0')) {
+                        formattedPhone = '254' + formattedPhone.substring(1);
+                    } else if (!formattedPhone.startsWith('254')) {
+                        formattedPhone = '254' + formattedPhone;
+                    }
+
+                    confirmPayment.disabled = true;
+                    confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending STK Push...';
+                    paymentStatus.style.display = 'block';
+                    paymentStatus.className = 'alert alert-success';
+                    paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> STK Push request sent. Check your phone to complete payment.';
+
+                    fetch('mpesa_pay.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'payment_type=continuation&appointment_id=<?php echo $appointment['id']; ?>&phone_number=' + formattedPhone + '&payment_method=mpesa'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            paymentStatus.className = 'alert alert-success';
+                            paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
+                            payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
+                            payNowBtn.disabled = true;
+                        } else {
+                            paymentStatus.className = 'alert alert-danger';
+                            paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                            confirmPayment.disabled = false;
+                            confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                        }
+                    })
+                    .catch(error => {
+                        paymentStatus.className = 'alert alert-danger';
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
                         confirmPayment.disabled = false;
                         confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
-                    }
-                })
-                .catch(error => {
-                    paymentStatus.className = 'alert alert-danger';
-                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
-                    confirmPayment.disabled = false;
-                    confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
-                });
+                    });
+                }
             });
         }
 

@@ -70,9 +70,19 @@ CREATE TABLE IF NOT EXISTS payments (
     phone_number VARCHAR(20) NOT NULL,
     mpesa_receipt_number VARCHAR(100),
     status ENUM('PENDING', 'COMPLETED', 'FAILED') DEFAULT 'PENDING',
+    transaction_time VARCHAR(50),
+    result_code INT,
+    result_desc TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
 );
+
+-- Migration: Add M-Pesa callback columns to payments (for existing databases)
+-- ALTER TABLE payments ADD COLUMN transaction_time VARCHAR(50) DEFAULT NULL AFTER status;
+-- ALTER TABLE payments ADD COLUMN result_code INT DEFAULT NULL AFTER transaction_time;
+-- ALTER TABLE payments ADD COLUMN result_desc TEXT DEFAULT NULL AFTER result_code;
+-- ALTER TABLE payments ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;
 
 -- Insert admin user (username: Dennis Njenga, email: admin@justicelawfirm.com, password: 2060)
 INSERT INTO admin_users (username, email, password) VALUES 

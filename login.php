@@ -454,9 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </button>
             </form>
 
-            <div class="demo-info" style="background: var(--light-gray); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; font-size: 0.85rem;">
-                <strong>Demo Admin:</strong> admin@justicelawfirm.com / 2060
-            </div>
+           
 
             <div class="register-link">
                 Don't have an account? <a href="register.php">Register here</a>

@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -15,11 +16,25 @@ $uploadError = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
     $file = $_FILES['document'];
+    $appointment_id = isset($_POST['appointment_id']) ? (int)$_POST['appointment_id'] : null;
     
     if ($file['error'] === UPLOAD_ERR_OK) {
-        $allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        $allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/plain',
+            'image/jpeg',
+            'image/png',
+            'image/gif'
+        ];
+        $allowedExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         
-        if (in_array($file['type'], $allowedTypes)) {
+        $typeValid = in_array($file['type'], $allowedTypes);
+        $extValid = in_array($fileExtension, $allowedExtensions);
+        
+        if ($typeValid || $extValid) {
             $uploadDir = 'uploads/';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
@@ -29,19 +44,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
             $filePath = $uploadDir . time() . '_' . $fileName;
             
             if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                // Use detected MIME type if valid, otherwise determine from extension
+                $storedType = $typeValid ? $file['type'] : mime_content_type($filePath);
                 execute(
-                    "INSERT INTO documents (user_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?)",
-                    [$user_id, $fileName, $filePath, $file['type']]
+                    "INSERT INTO documents (user_id, appointment_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?, ?)",
+                    [$user_id, $appointment_id, $fileName, $filePath, $storedType]
                 );
                 $uploadSuccess = 'Document uploaded successfully!';
             } else {
-                $uploadError = 'Failed to upload document.';
+                $uploadError = 'Failed to upload document. Check directory permissions.';
             }
         } else {
-            $uploadError = 'Only PDF and DOCX files are allowed.';
+            $uploadError = 'Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, GIF.';
         }
     } else {
-        $uploadError = 'Error uploading file.';
+        $uploadError = 'Error uploading file. Code: ' . $file['error'];
     }
 }
 
@@ -51,8 +68,6 @@ $documents = getAllRows(
 );
 
 // Client header data
-$user_names = explode(' ', $user_name);
-$user_initials = strtoupper(substr($user_names[0], 0, 1) . (isset($user_names[1]) ? substr($user_names[1], 0, 1) : ''));
 $current_date = date('F j, Y');
 
 // Get notifications
@@ -67,6 +82,9 @@ $unreadNotifications = getRow(
 
 // Get user info
 $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
+
+$lastView = $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00';
+$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $lastView])['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -146,6 +164,9 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 <body>
     <?php
     $sidebar_role = 'client';
+    $sidebar_badges = [
+        'appointments' => $userPendingCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 
@@ -162,9 +183,12 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
         <div class="upload-section">
             <h2><i class="fas fa-cloud-upload-alt"></i> Upload Document</h2>
             <form class="upload-form" method="POST" enctype="multipart/form-data">
+                <?php if (isset($_GET['appointment_id'])): ?>
+                    <input type="hidden" name="appointment_id" value="<?php echo (int)$_GET['appointment_id']; ?>">
+                <?php endif; ?>
                 <div class="form-group">
-                    <label for="document">Select File (PDF or DOCX)</label>
-                    <input type="file" id="document" name="document" accept=".pdf,.doc,.docx" required>
+                    <label for="document">Select File (PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</label>
+                    <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required>
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
             </form>
@@ -185,7 +209,13 @@ $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
                                 <tr>
                                     <td>
                                         <div class="doc-info" style="display:flex;align-items:center;gap:1rem;">
-                                            <div class="doc-icon"><i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i></div>
+                                            <?php if (strpos($doc['file_type'], 'image/') === 0): ?>
+                                                <div class="doc-icon" style="background: #e8f5e9;">
+                                                    <img src="<?php echo htmlspecialchars($doc['file_path']); ?>" alt="<?php echo htmlspecialchars($doc['file_name']); ?>" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;">
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="doc-icon"><i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i></div>
+                                            <?php endif; ?>
                                             <div><h4><?php echo htmlspecialchars($doc['file_name']); ?></h4></div>
                                         </div>
                                     </td>

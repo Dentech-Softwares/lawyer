@@ -16,9 +16,8 @@ if ($isLoggedIn) {
 $paymentSuccess = $_SESSION['mpesa_payment_success'] ?? '';
 unset($_SESSION['mpesa_payment_success']);
 
-// Appointment ID from session (set after form submission)
-$createdAppointmentId = $_SESSION['booking_appointment_id'] ?? null;
-unset($_SESSION['booking_appointment_id']);
+// Appointment ID from URL (set after successful booking & redirect) or session fallback
+$createdAppointmentId = $_GET['appointment_id'] ?? $_SESSION['booking_appointment_id'] ?? null;
 
 // Flash messages from session
 if (isset($_SESSION['success'])) {
@@ -85,16 +84,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             );
             
             if ($result) {
+                // Capture the appointment ID immediately after insertion,
+                // BEFORE any subsequent INSERTs overwrite mysqli_insert_id.
+                $appointmentId = getLastId();
+
                 // Create notification
                 execute(
                     "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
                     [$user_id, 'Your appointment has been submitted successfully. We will review it shortly.']
                 );
                 
-                // Set flash message and redirect to client dashboard
                 $_SESSION['success'] = 'Appointment booked successfully! Proceed to payment.';
-                $_SESSION['booking_appointment_id'] = $result ? getLastId() : null;
-                header("Location: book_appointment.php?payment=1");
+                $_SESSION['booking_appointment_id'] = $appointmentId;
+                header("Location: book_appointment.php?appointment_id=" . $appointmentId);
                 exit();
             } else {
                 $error = 'Failed to book appointment. Please try again.';

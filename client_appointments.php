@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -9,15 +10,19 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
 
+$current_date = date('F j, Y');
+
+// Calculate badge count BEFORE updating last view timestamp
+$lastView = $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00';
+$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $lastView])['count'] ?? 0;
+
+// NOW mark appointments as viewed (for badge clearing on NEXT visit)
+$_SESSION['user_last_appointments_view'] = date('Y-m-d H:i:s');
+
 $appointments = getAllRows(
     "SELECT * FROM appointments WHERE user_id = ? ORDER BY date DESC, time DESC",
     [$user_id]
 );
-
-// Client header data
-$user_names = explode(' ', $user_name);
-$user_initials = strtoupper(substr($user_names[0], 0, 1) . (isset($user_names[1]) ? substr($user_names[1], 0, 1) : ''));
-$current_date = date('F j, Y');
 
 // Get notifications
 $notifications = getAllRows(
@@ -29,8 +34,6 @@ $unreadNotifications = getRow(
     [$user_id]
 );
 
-// Get user info
-    $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -136,6 +139,9 @@ $unreadNotifications = getRow(
 <body>
     <?php
     $sidebar_role = 'client';
+    $sidebar_badges = [
+        'appointments' => $userPendingCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 

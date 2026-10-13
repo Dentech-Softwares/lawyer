@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_id'])) {
         $error = 'Please provide both date and time.';
     } else {
         $result = execute(
-            "UPDATE appointments SET date = ?, time = ?, status = 'approved' WHERE id = ?",
+            "UPDATE appointments SET date = ?, time = ?, status = 'approved', is_continuation = 1 WHERE id = ?",
             [$newDate, $newTime, $scheduleId]
         );
 
@@ -53,33 +53,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_id'])) {
     }
 }
 
-// Get pending appointments (continuation requests)
-$pendingAppointments = getAllRows(
+// Get all appointments for the Continuations page (list all, but badge only for flagged)
+$allAppointments = getAllRows(
     "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone
      FROM appointments a
      JOIN users u ON a.user_id = u.id
-     WHERE a.status = 'pending'
+     ORDER BY a.created_at DESC"
+);
+
+// Get continuation-flagged appointments for badge count
+$continuationAppointments = getAllRows(
+    "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.is_continuation = 1
      ORDER BY a.created_at DESC"
 );
 
 // Admin header data
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
-$admin_names = explode(' ', $admin_username);
-$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
 $current_date = date('F j, Y');
 
-// Admin notifications
-$adminNotifications = getAllRows(
-    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
-     FROM appointments a
-     JOIN users u ON a.user_id = u.id
-     WHERE a.status = 'pending'
-     ORDER BY a.created_at DESC LIMIT 5"
-);
-$unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
-);
+// Admin notifications - only count unviewed continuation appointments
+$continuationBadgeCount = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND created_at > ?",
+    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
+)['count'] ?? 0;
+
+$pendingAppointmentsCount = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
+)['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -298,13 +303,17 @@ $unreadAdminNotifications = getRow(
 <body>
     <?php
     $sidebar_role = 'admin';
+    $sidebar_badges = [
+        'appointments' => $pendingAppointmentsCount,
+        'schedule' => $continuationBadgeCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 
     <!-- Main Content -->
     <main class="main-content">
         <div class="header">
-            <h1><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Schedule Continuations</h1>
+            <h1><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
         </div>
 
         <?php if($success): ?>
@@ -321,24 +330,25 @@ $unreadAdminNotifications = getRow(
 
         <div class="section-card">
             <div class="section-header">
-                <h2><i class="fas fa-calendar-check" style="color: var(--warning);"></i> Pending Continuations (<?php echo count($pendingAppointments); ?>)</h2>
+                <h2><i class="fas fa-calendar-check" style="color: var(--warning);"></i> All Appointments (<?php echo count($allAppointments); ?>) — <span style="color: var(--gray); font-weight: 400;"><?php echo count($continuationAppointments); ?> flagged as continuation</span></h2>
             </div>
 
             <div class="table-container">
-                <?php if(!empty($pendingAppointments)): ?>
+                <?php if(!empty($allAppointments)): ?>
                     <table class="continuations-table">
                         <thead>
                             <tr>
                                 <th>Case #</th>
                                 <th>Client</th>
                                 <th>Case Type</th>
-                                <th>Current Date</th>
+                                <th>Date & Time</th>
                                 <th>Status</th>
+                                <th>Continuation</th>
                                 <th style="width: 60px;"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($pendingAppointments as $apt): ?>
+                            <?php foreach($allAppointments as $apt): ?>
                             <tr onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'" style="cursor: pointer;">
                                 <td><strong>#<?php echo $apt['id']; ?></strong></td>
                                 <td>
@@ -351,7 +361,20 @@ $unreadAdminNotifications = getRow(
                                     <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
                                 </td>
                                 <td>
-                                    <span class="status-badge pending">Pending</span>
+                                    <span class="status-badge <?php echo $apt['status']; ?>">
+                                        <?php echo ucfirst($apt['status']); ?>
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <?php if ($apt['is_continuation']): ?>
+                                        <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
+                                            <i class="fas fa-sync-alt"></i> Yes
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                            <i class="fas fa-minus"></i> No
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td style="text-align: right;">
                                     <a href="appointment_details.php?id=<?php echo $apt['id']; ?>" class="btn-view" title="View Details">
@@ -364,9 +387,9 @@ $unreadAdminNotifications = getRow(
                     </table>
                 <?php else: ?>
                     <div class="empty-state">
-                        <i class="fas fa-check-circle"></i>
-                        <h3>No Pending Continuations</h3>
-                        <p>All continuation requests have been scheduled.</p>
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Appointments</h3>
+                        <p>No appointments have been created yet.</p>
                     </div>
                 <?php endif; ?>
             </div>

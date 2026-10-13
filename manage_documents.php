@@ -1,10 +1,67 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit;
 }
+
+// Handle file upload
+$uploadSuccess = '';
+$uploadError = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
+    $file = $_FILES['document'];
+    $appointment_id = isset($_POST['appointment_id']) ? (int)$_POST['appointment_id'] : null;
+    $user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : null;
+    
+    if ($file['error'] === UPLOAD_ERR_OK) {
+        $allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/plain',
+            'image/jpeg',
+            'image/png',
+            'image/gif'
+        ];
+        $allowedExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        $typeValid = in_array($file['type'], $allowedTypes);
+        $extValid = in_array($fileExtension, $allowedExtensions);
+        
+        if ($typeValid || $extValid) {
+            $uploadDir = 'uploads/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            $fileName = basename($file['name']);
+            $filePath = $uploadDir . time() . '_' . $fileName;
+            
+            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                $storedType = $typeValid ? $file['type'] : mime_content_type($filePath);
+                execute(
+                    "INSERT INTO documents (user_id, appointment_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?, ?)",
+                    [$user_id, $appointment_id, $fileName, $filePath, $storedType]
+                );
+                $uploadSuccess = 'Document uploaded successfully!';
+            } else {
+                $uploadError = 'Failed to upload document. Check directory permissions.';
+            }
+        } else {
+            $uploadError = 'Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, GIF.';
+        }
+    } else {
+        $uploadError = 'Error uploading file. Code: ' . $file['error'];
+    }
+}
+
+// Get clients and appointments for dropdown
+$clients = getAllRows("SELECT id, name FROM users ORDER BY name");
+$appointments = getAllRows("SELECT a.id, a.case_type, u.name as client_name FROM appointments a JOIN users u ON a.user_id = u.id ORDER BY a.date DESC");
 
 $documents = getAllRows(
     "SELECT d.*, u.name as client_name, a.case_type 
@@ -17,8 +74,6 @@ $documents = getAllRows(
 // Admin header data
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
-$admin_names = explode(' ', $admin_username);
-$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
 $current_date = date('F j, Y');
 
 // Get admin notifications (pending appointment requests)
@@ -29,9 +84,11 @@ $adminNotifications = getAllRows(
      WHERE a.status = 'pending' 
      ORDER BY a.created_at DESC LIMIT 5"
 );
-    $unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
+$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +123,10 @@ $adminNotifications = getAllRows(
         .filter-btn { padding: 0.7rem 1.5rem; border: 2px solid var(--light-gray); background: var(--white); border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--gray); text-decoration: none; transition: 0.3s; }
         .filter-btn:hover { border-color: var(--accent); }
 
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; display: flex; align-items: center; gap: 0.8rem; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
         .section-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; }
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
@@ -90,6 +151,19 @@ $adminNotifications = getAllRows(
 
         .mobile-menu-btn { display: none; }
 
+        .upload-section { background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .upload-section h2 { color: var(--primary); margin-bottom: 1rem; }
+        .upload-form { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem; }
+        .form-group select, .form-group input { width: 100%; padding: 0.8rem; border: 2px solid var(--light-gray); border-radius: 8px; }
+        .btn { padding: 0.7rem 1.5rem; border-radius: 5px; text-decoration: none; font-weight: 600; transition: 0.3s; border: none; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: var(--primary); }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .doc-icon { width: 45px; height: 45px; background: rgba(212, 175, 55, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2rem; }
+        .doc-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); }
@@ -101,11 +175,52 @@ $adminNotifications = getAllRows(
 <body>
     <?php
     $sidebar_role = 'admin';
+    $sidebar_badges = [
+        'appointments' => $pendingAppointmentsCount,
+        'schedule' => $pendingAppointmentsCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 
     <main class="main-content">
         <?php include 'admin_header.php'; ?>
+
+        <?php if($uploadSuccess): ?>
+            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo $uploadSuccess; ?></div>
+        <?php endif; ?>
+        <?php if($uploadError): ?>
+            <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <?php echo $uploadError; ?></div>
+        <?php endif; ?>
+
+        <!-- Upload Form -->
+        <div class="upload-section">
+            <h2><i class="fas fa-cloud-upload-alt"></i> Upload New Document</h2>
+            <form class="upload-form" method="POST" enctype="multipart/form-data">
+                <div class="form-group" style="min-width: 200px;">
+                    <label for="user_id">Client <span style="color: var(--danger);">*</span></label>
+                    <select id="user_id" name="user_id" required>
+                        <option value="">Select Client</option>
+                        <?php foreach ($clients as $client): ?>
+                            <option value="<?php echo $client['id']; ?>"><?php echo htmlspecialchars($client['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="min-width: 250px;">
+                    <label for="appointment_id">Appointment (Optional)</label>
+                    <select id="appointment_id" name="appointment_id">
+                        <option value="">-- Select Appointment --</option>
+                        <?php foreach ($appointments as $apt): ?>
+                            <option value="<?php echo $apt['id']; ?>"><?php echo htmlspecialchars($apt['client_name'] . ' - ' . $apt['case_type'] . ' (' . date('M d, Y', strtotime($apt['date'])) . ')'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 250px;">
+                    <label for="document">File <span style="color: var(--danger);">*</span></label>
+                    <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
+            </form>
+        </div>
 
         <div class="section-card">
             <div class="table-container">
@@ -125,7 +240,13 @@ $adminNotifications = getAllRows(
                                 <tr>
                                     <td>
                                         <div class="doc-info" style="display:flex;align-items:center;gap:1rem;">
-                                            <div class="doc-icon"><i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i></div>
+                                            <?php if (strpos($doc['file_type'], 'image/') === 0): ?>
+                                                <div class="doc-icon" style="background: #e8f5e9;">
+                                                    <img src="<?php echo htmlspecialchars($doc['file_path']); ?>" alt="<?php echo htmlspecialchars($doc['file_name']); ?>" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;">
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="doc-icon"><i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i></div>
+                                            <?php endif; ?>
                                             <div>
                                                 <h4><?php echo htmlspecialchars($doc['file_name']); ?></h4>
                                                 <p><?php echo strtoupper($doc['file_type'] ?? 'FILE'); ?></p>

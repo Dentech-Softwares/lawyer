@@ -1,8 +1,9 @@
 <?php
 // admin_header.php - Reusable admin header include
 // Requires these variables to be set before including:
-// $admin_username, $admin_email, $admin_initials, $current_date
+// $admin_username, $admin_email, $current_date
 // $unreadAdminNotifications (array with 'count'), $adminNotifications (array of rows)
+require_once __DIR__ . '/includes/helpers.php';
 ?>
 <style>
     :root {
@@ -314,7 +315,7 @@
 
         <div class="profile-container" id="profileDropdown">
             <button type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
-                <span class="profile-badge"><?php echo htmlspecialchars($admin_initials ?? 'AD'); ?></span>
+                <span class="profile-badge"><?php echo htmlspecialchars(get_user_initials($admin_username ?? '')); ?></span>
                 <div class="profile-name-row">
                     <span class="profile-name"><?php echo htmlspecialchars($admin_username ?? ''); ?></span>
                     <span class="profile-role">Administrator</span>

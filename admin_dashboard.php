@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
@@ -9,8 +10,6 @@ if (!isset($_SESSION['admin_id'])) {
 
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
-$admin_names = explode(' ', $admin_username);
-$admin_initials = strtoupper(substr($admin_names[0], 0, 1) . (isset($admin_names[1]) ? substr($admin_names[1], 0, 1) : ''));
 $current_date = date('F j, Y');
 
 // Get stats
@@ -39,8 +38,10 @@ $adminNotifications = getAllRows(
 );
 
 $unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'"
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
+$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -420,6 +421,10 @@ $unreadAdminNotifications = getRow(
 <body>
     <?php
     $sidebar_role = 'admin';
+    $sidebar_badges = [
+        'appointments' => $pendingAppointmentsCount,
+        'schedule' => $pendingAppointmentsCount,
+    ];
     include 'includes/sidebar.php';
     ?>
 

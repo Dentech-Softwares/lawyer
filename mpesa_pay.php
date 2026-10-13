@@ -1,8 +1,18 @@
 <?php
-// mpesa_pay.php - M-Pesa STK Push Payment Handler
+// mpesa_pay.php - M-Pesa STK Push Request Handler (Safaricom Daraja Sandbox)
+// https://developer.safaricom.co.ke
+//
+// This script:
+//   1. Retrieves an OAuth access token from the Daraja Sandbox.
+//   2. Generates a dynamic Base64 password (Shortcode + Passkey + Timestamp).
+//   3. Sends an STK Push request to the customer's phone.
+//   4. Records the pending payment so the callback handler can update it.
 
 require_once 'db.php';
 
+/**
+ * Load variables from a .env file into the process environment.
+ */
 function loadEnv($path) {
     if (!file_exists($path)) return;
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -26,6 +36,63 @@ loadEnv(__DIR__ . '/.env');
 
 header('Content-Type: application/json');
 
+function envValue($key, $default = '') {
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        $value = $_ENV[$key] ?? ($_SERVER[$key] ?? $default);
+    }
+    return trim((string) $value);
+}
+
+function mpesaError($message, $details = [], $statusCode = 400) {
+    http_response_code($statusCode);
+    echo json_encode(array_merge(['status' => 'error', 'message' => $message], $details));
+    exit;
+}
+
+// ---------------------------------------------------------------------
+// Sandbox environment
+// Safaricom Daraja Sandbox URLs
+// ---------------------------------------------------------------------
+$oauthUrl       = 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
+$stkPushUrl     = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
+
+// Consumer Key / Secret from .env (register at developer.safaricom.co.ke)
+$consumerKey    = envValue('MPESA_SANDBOX_CONSUMER_KEY');
+$consumerSecret = envValue('MPESA_SANDBOX_CONSUMER_SECRET');
+
+// Sandbox Shortcode and Passkey (defaults are Safaricom's published test values)
+$businessShortCode = envValue('MPESA_BUSINESS_SHORTCODE', '174379');
+$passkey           = envValue('MPESA_PASSKEY', 'bfb279f9aa9bdbc158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c9192');
+$callbackUrl       = envValue('MPESA_CALLBACK_URL');
+
+// Validate required configuration
+$missingConfig = [];
+if ($consumerKey === '' || strpos($consumerKey, 'your_') === 0) {
+    $missingConfig[] = 'MPESA_SANDBOX_CONSUMER_KEY';
+}
+if ($consumerSecret === '' || strpos($consumerSecret, 'your_') === 0) {
+    $missingConfig[] = 'MPESA_SANDBOX_CONSUMER_SECRET';
+}
+if ($callbackUrl === '' || strpos($callbackUrl, 'your-') === 0) {
+    $missingConfig[] = 'MPESA_CALLBACK_URL (must be a public HTTPS URL)';
+}
+
+if (!empty($missingConfig)) {
+    mpesaError(
+        'M-Pesa sandbox configuration is incomplete: ' . implode(', ', $missingConfig),
+        ['hint' => 'Register at https://developer.safaricom.co.ke and add credentials to your .env file'],
+        500
+    );
+}
+
+if (!filter_var($callbackUrl, FILTER_VALIDATE_URL) || stripos($callbackUrl, 'https://') !== 0) {
+    mpesaError('MPESA_CALLBACK_URL must be a public HTTPS URL.', [], 500);
+}
+
+// ---------------------------------------------------------------------
+// GET: poll / query a previously-initiated payment status
+// ---------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['checkout_request_id'])) {
     $checkoutRequestId = trim((string) ($_GET['checkout_request_id'] ?? ''));
     if ($checkoutRequestId === '') {
@@ -48,12 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['checkout_request_id']))
     }
 
     echo json_encode([
-        'status' => 'success',
-        'payment_status' => $payment['status'],
-        'amount' => $payment['amount'],
-        'phone_number' => $payment['phone_number'],
+        'status'             => 'success',
+        'payment_status'     => $payment['status'],
+        'amount'             => $payment['amount'],
+        'phone_number'       => $payment['phone_number'],
         'mpesa_receipt_number' => $payment['mpesa_receipt_number'] ?? '',
-        'created_at' => $payment['created_at']
+        'created_at'         => $payment['created_at']
     ]);
     exit;
 }
@@ -63,128 +130,96 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-function envValue($key, $default = '') {
-    $value = getenv($key);
-    if ($value === false || $value === '') {
-        $value = $_ENV[$key] ?? ($_SERVER[$key] ?? $default);
-    }
-    return trim((string) $value);
-}
+// ---------------------------------------------------------------------
+// Payment constants
+// ---------------------------------------------------------------------
+define('BOOKING_FEE', 500);
+define('CONTINUATION_FEE', 250);
 
-function mpesaError($message, $details = [], $statusCode = 400) {
-    http_response_code($statusCode);
-    echo json_encode(array_merge(['status' => 'error', 'message' => $message], $details));
-    exit;
-}
+// ---------------------------------------------------------------------
+// 1. Get input data
+// ---------------------------------------------------------------------
+$paymentType = $_POST['payment_type'] ?? $_GET['payment_type'] ?? 'booking';
 
-$environment = strtolower(envValue('MPESA_ENVIRONMENT', 'production'));
-$apiBase = $environment === 'production'
-    ? 'https://api.safaricom.co.ke'
-    : 'https://sandbox.safaricom.co.ke';
+// Appointment ID — accept from POST (form submit), GET (URL param), or ?id=
+$rawAppointmentId = $_POST['appointment_id']
+    ?? $_GET['appointment_id']
+    ?? $_GET['id']
+    ?? null;
 
-$consumerKey = 'N3JAdyKUBStxVD0VGfA6teG5Md8u8s4QRUAhbwQMBNXGsrFo';
-$consumerSecret = 'yx4ztulAbjVDbh9Ufcf6AH9F1Y7y2MhJ11ERZ1YKFZM7W546XGnk2kRR6EwFcy4j';
-$businessShortCode = envValue('MPESA_BUSINESS_SHORTCODE', '174379');
-$passkey = envValue('MPESA_PASSKEY', 'bfb279f9aa9bdbc158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c9192');
-$callbackUrl = envValue('MPESA_CALLBACK_URL', 'https://mydomain.com/mpesa-express-simulate/');
+$phoneNumber = $_POST['phone_number'] ?? $_GET['phone_number'] ?? '';
 
-if (!in_array($environment, ['sandbox', 'production'], true)) {
-    mpesaError('Invalid M-Pesa environment. Use sandbox or production.');
-}
-
-// For sandbox, use Safaricom's test credentials
-if ($environment === 'sandbox') {
-    // Sandbox test credentials - user MUST register at developer.safaricom.co.ke to get their own
-    $sandboxConsumerKey = envValue('MPESA_SANDBOX_CONSUMER_KEY');
-    $sandboxConsumerSecret = envValue('MPESA_SANDBOX_CONSUMER_SECRET');
-    
-    // Check for placeholder values
-    $isPlaceholder = false;
-    if (strpos($sandboxConsumerKey, 'your_') === 0 || strpos($sandboxConsumerSecret, 'your_') === 0) {
-        $isPlaceholder = true;
-    }
-    
-    if ($sandboxConsumerKey && $sandboxConsumerSecret && !$isPlaceholder) {
-        $consumerKey = $sandboxConsumerKey;
-        $consumerSecret = $sandboxConsumerSecret;
-    } else {
-        mpesaError(
-            'Sandbox credentials required. Register at https://developer.safaricom.co.ke, create a sandbox app, and set MPESA_SANDBOX_CONSUMER_KEY and MPESA_SANDBOX_CONSUMER_SECRET in your .env file.',
-            ['environment' => $environment, 'hint' => 'Replace placeholder values in .env with real credentials from Safaricom Developer Portal'],
-            500
-        );
-    }
-    
-    $businessShortCode = '174379';
-    $passkey = 'bfb279f9aa9bdbc158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c9192';
-} else {
-    // Production: require user to provide their BusinessShortCode and Passkey
-    $businessShortCode = envValue('MPESA_BUSINESS_SHORTCODE', '174379');
-    $passkey = envValue('MPESA_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919');
-}
-
-$callbackUrl = envValue('MPESA_CALLBACK_URL', 'https://mydomain.com/mpesa-express-simulate/');
-
-$missingConfig = [];
-if ($environment === 'production') {
-    if ($businessShortCode === '') {
-        $missingConfig[] = 'MPESA_BUSINESS_SHORTCODE (your PayBill/Till Number)';
-    }
-    if ($passkey === '') {
-        $missingConfig[] = 'MPESA_PASSKEY (your Lipa Na M-Pesa Passkey)';
-    }
-}
-if ($callbackUrl === '' || $callbackUrl === 'https://mydomain.com/mpesa-express-simulate/' || $callbackUrl === 'https://yourdomain.com/mpesa_callback.php') {
-    $missingConfig[] = 'MPESA_CALLBACK_URL';
-}
-
-if (!empty($missingConfig)) {
+// ---------------------------------------------------------------------
+// 2. Validate & look up the appointment ID
+// ---------------------------------------------------------------------
+if (empty($rawAppointmentId)) {
+    // Parameter was missing entirely
     mpesaError(
-        'M-Pesa configuration is incomplete: ' . implode(', ', $missingConfig),
-        ['environment' => $environment],
+        'Appointment ID is required to process payment. '
+        . 'Please go back and try again or select the Pay button for an appointment.',
+        ['received' => $rawAppointmentId]
+    );
+}
+
+// Sanitize to a strict integer
+$appointmentId = intval($rawAppointmentId);
+
+if ($appointmentId < 1) {
+    mpesaError(
+        'Invalid appointment ID. The value "' . htmlspecialchars((string) $rawAppointmentId)
+        . '" is not a valid positive integer.',
+        ['received' => $rawAppointmentId]
+    );
+}
+
+// Look up the appointment directly with prepared statement + error checking
+// (bypasses db.php helpers which silently swallow prepare/execute failures)
+global $conn;
+
+$checkApp = getRow("SELECT id FROM appointments WHERE id = ?", [$appointmentId]);
+
+if ($conn && mysqli_errno($conn)) {
+    // A database error occurred during the query
+    $dbError = mysqli_error($conn);
+    mysqli_clear_error($conn);
+    error_log("M-Pesa: DB error while looking up appointment {$appointmentId}: {$dbError}");
+    mpesaError(
+        'Unable to verify the appointment due to a database error. '
+        . 'Please try again later or contact support.',
+        ['appointment_id' => $appointmentId],
         500
     );
 }
 
-if (!filter_var($callbackUrl, FILTER_VALIDATE_URL) || stripos($callbackUrl, 'https://') !== 0) {
-    mpesaError('MPESA_CALLBACK_URL must be a public HTTPS URL.', ['environment' => $environment], 500);
+if (!$checkApp) {
+    // ID was passed but no matching record exists
+    error_log("M-Pesa: Appointment not found for ID {$appointmentId}");
+    mpesaError(
+        'Appointment not found. The appointment ID (' . $appointmentId
+        . ') does not exist in the database. Please verify the appointment and try again.',
+        ['appointment_id' => $appointmentId]
+    );
 }
 
-// Allow the specific callback URL provided by user
-if (preg_match('/^https:\/\/(localhost|127\.0\.0\.1|\[::1\])([:\/]|$)/i', $callbackUrl) && $environment === 'production') {
-    mpesaError('MPESA_CALLBACK_URL must be publicly reachable; use a public HTTPS domain or tunnel for local testing.', [], 500);
-}
-
-define('BOOKING_FEE', 500);
-define('CONTINUATION_FEE', 250);
-
-// 2. Get input data
-$paymentType    = $_POST['payment_type'] ?? 'booking';
-$rawAppointmentId = $_POST['appointment_id'] ?? null;
-$phoneNumber    = $_POST['phone_number'] ?? '';
-
-// Sanitize and verify appointment_id against database foreign key constraint
-$appointmentId = null;
-if (!empty($rawAppointmentId)) {
-    $checkApp = getRow("SELECT id FROM appointments WHERE id = ?", [(int)$rawAppointmentId]);
-    if ($checkApp) {
-        $appointmentId = (int)$rawAppointmentId;
-    }
-}
+// Appointment confirmed — $appointmentId is a valid, existing record
 
 if (empty($phoneNumber)) {
     echo json_encode(['status' => 'error', 'message' => 'Phone number is required']);
     exit;
 }
 
+// ---------------------------------------------------------------------
 // 3. Calculate fee based on payment type
+// ---------------------------------------------------------------------
 if ($paymentType === 'continuation') {
     $amount = CONTINUATION_FEE;
 } else {
     $amount = BOOKING_FEE;
 }
 
+// ---------------------------------------------------------------------
 // 4. Format phone number to 2547XXXXXXXX or 2541XXXXXXXX
+// ---------------------------------------------------------------------
 $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
 if (strlen($phoneNumber) === 10 && (strpos($phoneNumber, '07') === 0 || strpos($phoneNumber, '01') === 0)) {
     $phoneNumber = '254' . substr($phoneNumber, 1);
@@ -197,57 +232,120 @@ if (strlen($phoneNumber) !== 12 || !preg_match('/^254[71]/', $phoneNumber)) {
     exit;
 }
 
-// 5. Generate OAuth Access Token
-$authUrl = $apiBase . '/oauth/v1/generate?grant_type=client_credentials';
-$credentials = base64_encode($consumerKey . ':' . $consumerSecret);
+// ---------------------------------------------------------------------
+// 4. Generate dynamic password: base64(Shortcode + Passkey + Timestamp)
+// ---------------------------------------------------------------------
+$timestamp = date('YmdHis');
+$password  = base64_encode($businessShortCode . $passkey . $timestamp);
 
-$ch = curl_init($authUrl);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Basic ' . $credentials]);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; M-Pesa Integration)');
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-$authResponseRaw = curl_exec($ch);
-$authError = curl_error($ch);
-$authHttpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-if ($authResponseRaw === false) {
-    mpesaError('Unable to connect to M-Pesa OAuth service.', ['details' => $authError], 502);
+// ---------------------------------------------------------------------
+// 5. Get OAuth Access Token from Daraja Sandbox
+// ---------------------------------------------------------------------
+// Validate credentials are loaded and non-empty
+if (empty($consumerKey) || empty($consumerSecret)) {
+    mpesaError(
+        'M-Pesa sandbox credentials are missing. '
+        . 'Set MPESA_SANDBOX_CONSUMER_KEY and MPESA_SANDBOX_CONSUMER_SECRET in your .env file '
+        . '(register at https://developer.safaricom.co.ke).',
+        ['oauth_url' => $oauthUrl],
+        500
+    );
 }
 
+// Trim any stray whitespace or newline characters from credentials
+$consumerKey    = trim($consumerKey);
+$consumerSecret = trim($consumerSecret);
+
+error_log("M-Pesa OAuth request: GET $oauthUrl");
+error_log("M-Pesa Consumer Key (first 8 chars): " . substr($consumerKey, 0, 8) . '...');
+error_log("M-Pesa Consumer Secret (first 8 chars): " . substr($consumerSecret, 0, 8) . '...');
+
+// Build Basic Authentication header: base64(ConsumerKey:ConsumerSecret)
+$credentials = base64_encode($consumerKey . ':' . $consumerSecret);
+
+$ch = curl_init($oauthUrl);
+curl_setopt($ch, CURLOPT_HTTPGET, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Basic ' . $credentials,
+    'Content-Type: application/json',
+    'User-Agent: JusticeLaw-Mpesa-Integration'
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+$authResponseRaw   = curl_exec($ch);
+$authError         = curl_error($ch);
+$authErrno         = curl_errno($ch);
+$authHttpStatus    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
 // Debug: log auth response
-error_log("M-Pesa Auth Response: HTTP $authHttpStatus - $authResponseRaw");
+error_log("M-Pesa OAuth Response: HTTP $authHttpStatus - " . ($authResponseRaw ?: '(empty response)'));
+
+if ($authResponseRaw === false || $authErrno) {
+    // cURL-level error (connection refused, DNS failure, SSL error, timeout, etc.)
+    error_log("M-Pesa OAuth cURL error ($authErrno): $authError");
+    mpesaError(
+        'Unable to connect to M-Pesa OAuth service. '
+        . ($authError ? 'cURL error: ' . $authError : ''),
+        [
+            'curl_error'  => $authError,
+            'curl_errno'  => $authErrno,
+            'oauth_url'   => $oauthUrl
+        ],
+        502
+    );
+}
 
 $authResponse = json_decode($authResponseRaw, true);
-if (!isset($authResponse['access_token'])) {
+
+if (!is_array($authResponse) || !isset($authResponse['access_token'])) {
+    // Parse Safaricom's error response
+    $safaricomError    = is_array($authResponse)
+        ? ($authResponse['error_description'] ?? $authResponse['error'] ?? '')
+        : '';
+    $safaricomErrorRaw = $authResponseRaw;
+
+    error_log("M-Pesa OAuth failed ($authHttpStatus): $safaricomErrorRaw");
+
+    $errorDetails = [
+        'http_status'         => $authHttpStatus,
+        'safaricom_error'     => $safaricomError ?: 'Unknown authentication error',
+        'safaricom_response'  => is_array($authResponse) ? $authResponse : null,
+        'raw_response'        => $authResponseRaw,
+        'oauth_url'           => $oauthUrl
+    ];
+
+    // Provide a helpful, specific error message based on the Safaricom response
+    if ($authHttpStatus == 401 || $authHttpStatus == 403) {
+        $errorDetails['hint'] = 'Check that your Consumer Key and Consumer Secret are correct '
+                             . 'and that the app is active in the Safaricom Developer Portal.';
+    } elseif ($authHttpStatus == 400) {
+        $errorDetails['hint'] = 'The request was malformed. Verify the OAuth URL and parameters.';
+    }
+
     mpesaError(
-        'M-Pesa authentication failed.',
-        [
-            'http_status' => $authHttpStatus,
-            'response' => is_array($authResponse) ? $authResponse : null,
-            'raw_response' => $authResponseRaw
-        ],
+        'M-Pesa authentication failed' . ($safaricomError ? ': ' . $safaricomError : '') . '.',
+        $errorDetails,
         502
     );
 }
 
 $accessToken = $authResponse['access_token'];
 
-// 7. Generate Dynamic Password and Timestamp
-$timestamp   = date('YmdHis');
-$password    = base64_encode($businessShortCode . $passkey . $timestamp);
-
-// 8. Build STK Push Payload
-$stkUrl  = $apiBase . '/mpesa/stkpush/v1/processrequest';
+// ---------------------------------------------------------------------
+// 6. Build STK Push payload
+// ---------------------------------------------------------------------
 $payload = [
     'BusinessShortCode' => $businessShortCode,
     'Password'          => $password,
     'Timestamp'         => $timestamp,
     'TransactionType'   => 'CustomerPayBillOnline',
-    'Amount'            => (int)$amount,
+    'Amount'            => (int) $amount,
     'PartyA'            => $phoneNumber,
     'PartyB'            => $businessShortCode,
     'PhoneNumber'       => $phoneNumber,
@@ -256,8 +354,10 @@ $payload = [
     'TransactionDesc'   => ucfirst($paymentType) . ' Fee Payment'
 ];
 
-// 9. Execute STK Push Request
-$ch = curl_init($stkUrl);
+// ---------------------------------------------------------------------
+// 7. Execute STK Push Request
+// ---------------------------------------------------------------------
+$ch = curl_init($stkPushUrl);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -271,9 +371,9 @@ curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
-$response   = curl_exec($ch);
-$responseError = curl_error($ch);
-$httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$response        = curl_exec($ch);
+$responseError   = curl_error($ch);
+$httpStatus      = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 if ($response === false) {
@@ -288,8 +388,8 @@ if ($httpStatus < 200 || $httpStatus >= 300 || !is_array($resData)) {
     mpesaError(
         'M-Pesa STK Push request failed.',
         [
-            'http_status' => $httpStatus,
-            'response' => is_array($resData) ? $resData : null,
+            'http_status'  => $httpStatus,
+            'response'     => is_array($resData) ? $resData : null,
             'raw_response' => $response
         ],
         502
@@ -302,7 +402,7 @@ if (isset($resData['ResponseCode']) && $resData['ResponseCode'] === '0' && !empt
 
     $insertSql = "INSERT INTO payments (appointment_id, checkout_request_id, merchant_request_id, amount, phone_number, status) VALUES (?, ?, ?, ?, ?, 'PENDING')";
     execute($insertSql, [
-        $appointmentId ?: null,
+        $appointmentId,
         $checkoutRequestId,
         $merchantRequestId,
         $amount,
@@ -315,7 +415,7 @@ if (isset($resData['ResponseCode']) && $resData['ResponseCode'] === '0' && !empt
         'CheckoutRequestID' => $checkoutRequestId,
         'amount'            => $amount,
         'phone_number'      => $phoneNumber,
-        'environment'       => $environment
+        'environment'       => 'sandbox'
     ]);
     exit;
 }
@@ -323,7 +423,7 @@ if (isset($resData['ResponseCode']) && $resData['ResponseCode'] === '0' && !empt
 mpesaError(
     'M-Pesa rejected the STK Push request.',
     [
-        'response' => $resData,
+        'response'    => $resData,
         'http_status' => $httpStatus
     ],
     502

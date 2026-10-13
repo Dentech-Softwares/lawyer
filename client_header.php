@@ -1,8 +1,9 @@
 <?php
 // client_header.php - Reusable client header include
 // Requires these variables to be set before including:
-// $user_name, $user_initials, $user (with 'phone'), $current_date
+// $user_name, $user (with 'phone'), $current_date
 // $unreadNotifications (array with 'count'), $notifications (array of rows), $user_id
+require_once __DIR__ . '/includes/helpers.php';
 ?>
 <style>
     :root {
@@ -322,7 +323,7 @@
 
         <div class="profile-container" id="profileDropdown">
             <button type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
-                <span class="profile-badge"><?php echo htmlspecialchars($user_initials ?? 'US'); ?></span>
+                <span class="profile-badge"><?php echo htmlspecialchars(get_user_initials($user_name ?? '')); ?></span>
                 <div class="profile-name-row">
                     <span class="profile-name"><?php echo htmlspecialchars($user_name ?? ''); ?></span>
                     <span class="profile-role">Client Account</span>
