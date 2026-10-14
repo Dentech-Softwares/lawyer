@@ -70,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_notes'])) {
 if ($isAdmin) {
     $admin_username = $_SESSION['admin_username'];
     $admin_email = $_SESSION['admin_email'] ?? '';
+    $admin_phone = $_SESSION['admin_phone'] ?? '';
     $current_date = date('F j, Y');
     
     $adminNotifications = getAllRows(
@@ -84,6 +85,7 @@ if ($isAdmin) {
         [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
     );
     $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?", [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00'])['count'] ?? 0;
+    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1")['count'] ?? 0;
 } else {
     $user_id = $_SESSION['user_id'];
     $user_name = $_SESSION['user_name'];
@@ -108,7 +110,7 @@ if ($isAdmin) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Details - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
@@ -604,7 +606,7 @@ if ($isAdmin) {
     <?php
     $sidebar_role = $isAdmin ? 'admin' : 'client';
     $sidebar_badges = $isAdmin 
-        ? ['appointments' => $pendingAppointmentsCount, 'schedule' => $pendingAppointmentsCount]
+        ? ['appointments' => $pendingAppointmentsCount, 'schedule' => $continuationBadgeCount]
         : ['appointments' => $userPendingCount];
     include 'includes/sidebar.php';
     ?>

@@ -9,6 +9,7 @@
 //   4. Records the pending payment so the callback handler can update it.
 
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 /**
  * Load variables from a .env file into the process environment.
@@ -140,6 +141,7 @@ define('CONTINUATION_FEE', 250);
 // 1. Get input data
 // ---------------------------------------------------------------------
 $paymentType = $_POST['payment_type'] ?? $_GET['payment_type'] ?? 'booking';
+$paymentMethod = $_POST['payment_method'] ?? $_GET['payment_method'] ?? 'mpesa';
 
 // Appointment ID — accept from POST (form submit), GET (URL param), or ?id=
 $rawAppointmentId = $_POST['appointment_id']
@@ -216,6 +218,29 @@ if ($paymentType === 'continuation') {
 } else {
     $amount = BOOKING_FEE;
 }
+
+if ($paymentMethod === 'cash') {
+    global $conn;
+    $amount = ($paymentType === 'continuation') ? 250 : 500;
+    
+    // Insert payment record as COMPLETED for cash
+    $sql = "INSERT INTO payments (appointment_id, amount, phone_number, status, mpesa_receipt_number, created_at, updated_at)
+            VALUES (?, ?, ?, 'COMPLETED', ?, NOW(), NOW())";
+    $receiptRef = 'CASH_' . time() . '_' . $appointmentId;
+    execute($sql, [$appointmentId, $amount, $phoneNumber, $receiptRef]);
+    
+    // Update appointment if it's a booking payment? For continuation maybe just mark paid via notifications
+    // Send SMS confirmation
+    $user = getRow("SELECT u.name, u.phone FROM users u JOIN appointments a ON u.id = a.user_id WHERE a.id = ?", [$appointmentId]);
+    if ($user && !empty($user['phone'])) {
+        $smsMsg = "Dear {$user['name']}, cash payment of KES {$amount} has been recorded (Receipt: {$receiptRef}). - Justice Law Firm";
+        sendSMS($user['phone'], $smsMsg);
+    }
+    
+    echo json_encode(['status' => 'success', 'message' => 'Cash payment recorded successfully', 'receipt' => $receiptRef]);
+    exit;
+}
+
 
 // ---------------------------------------------------------------------
 // 4. Format phone number to 2547XXXXXXXX or 2541XXXXXXXX

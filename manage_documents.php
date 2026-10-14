@@ -48,6 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
                     [$user_id, $appointment_id, $fileName, $filePath, $storedType]
                 );
                 $uploadSuccess = 'Document uploaded successfully!';
+                
+                // Send SMS notification to client
+                $user = getRow("SELECT name, phone FROM users WHERE id = ?", [$user_id]);
+                if ($user && !empty($user['phone'])) {
+                    $smsMsg = "Dear {$user['name']}, a new document ({$fileName}) has been uploaded to your file. - Justice Law Firm";
+                    sendSMS($user['phone'], $smsMsg);
+                }
             } else {
                 $uploadError = 'Failed to upload document. Check directory permissions.';
             }
@@ -60,8 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
 }
 
 // Get clients and appointments for dropdown
-$clients = getAllRows("SELECT id, name FROM users ORDER BY name");
-$appointments = getAllRows("SELECT a.id, a.case_type, u.name as client_name FROM appointments a JOIN users u ON a.user_id = u.id ORDER BY a.date DESC");
+    $clients = getAllRows("SELECT id, name FROM users ORDER BY name");
+    $appointments = getAllRows(
+        "SELECT a.id, a.case_type, a.date, a.time, u.name as client_name, u.id as user_id
+         FROM appointments a
+         JOIN users u ON a.user_id = u.id
+         ORDER BY a.date DESC, a.time DESC"
+    );
 
 $documents = getAllRows(
     "SELECT d.*, u.name as client_name, a.case_type 
@@ -74,6 +86,7 @@ $documents = getAllRows(
 // Admin header data
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
+    $admin_phone = $_SESSION['admin_phone'] ?? '';
 $current_date = date('F j, Y');
 
 // Get admin notifications (pending appointment requests)
@@ -89,6 +102,11 @@ $unreadAdminNotifications = getRow(
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
 $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
+
+    // Count of flagged continuations for the sidebar badge
+    $continuationBadgeCount = getRow(
+        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
+    )['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,7 +114,7 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Documents - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
@@ -161,6 +179,40 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
         .btn-primary { background: var(--accent); color: var(--primary); }
         .btn-primary:hover { background: var(--accent-hover); }
 
+        /* Custom dropdown positioning fix */
+        .custom-select {
+            position: relative;
+        }
+        .custom-select .select-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            max-height: 220px;
+            overflow-y: auto;
+            background: var(--white);
+            border: 2px solid var(--accent);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .custom-select .select-options li {
+            padding: 0.6rem 0.8rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--light-gray);
+            font-size: 0.9rem;
+        }
+        .custom-select .select-options li:hover {
+            background: rgba(212, 175, 55, 0.1);
+        }
+        .custom-select .select-options li:last-child {
+            border-bottom: none;
+        }
+
         .doc-icon { width: 45px; height: 45px; background: rgba(212, 175, 55, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2rem; }
         .doc-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
 
@@ -177,7 +229,7 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
     $sidebar_role = 'admin';
     $sidebar_badges = [
         'appointments' => $pendingAppointmentsCount,
-        'schedule' => $pendingAppointmentsCount,
+        'schedule' => $continuationBadgeCount,
     ];
     include 'includes/sidebar.php';
     ?>
@@ -198,19 +250,30 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
             <form class="upload-form" method="POST" enctype="multipart/form-data">
                 <div class="form-group" style="min-width: 200px;">
                     <label for="user_id">Client <span style="color: var(--danger);">*</span></label>
-                    <select id="user_id" name="user_id" required>
-                        <option value="">Select Client</option>
-                        <?php foreach ($clients as $client): ?>
-                            <option value="<?php echo $client['id']; ?>"><?php echo htmlspecialchars($client['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="custom-select" id="clientSelect">
+                        <div class="select-display" id="clientDisplay" style="padding: 0.8rem; border: 2px solid var(--light-gray); border-radius: 8px; background: var(--white); cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <span id="clientText">Select Client</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <ul class="select-options" id="clientOptions" style="display: none;">
+                            <li data-value="" data-name="">Select Client</li>
+                            <?php foreach ($clients as $client): ?>
+                                <li data-value="<?php echo $client['id']; ?>" data-name="<?php echo htmlspecialchars($client['name']); ?>">
+                                    <?php echo htmlspecialchars($client['name']); ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <input type="hidden" id="user_id" name="user_id" required>
                 </div>
                 <div class="form-group" style="min-width: 250px;">
                     <label for="appointment_id">Appointment (Optional)</label>
-                    <select id="appointment_id" name="appointment_id">
+                    <select id="appointment_id" name="appointment_id" style="width: 100%; padding: 0.8rem; border: 2px solid var(--light-gray); border-radius: 8px;">
                         <option value="">-- Select Appointment --</option>
                         <?php foreach ($appointments as $apt): ?>
-                            <option value="<?php echo $apt['id']; ?>"><?php echo htmlspecialchars($apt['client_name'] . ' - ' . $apt['case_type'] . ' (' . date('M d, Y', strtotime($apt['date'])) . ')'); ?></option>
+                            <option value="<?php echo $apt['id']; ?>" data-client="<?php echo $apt['user_id']; ?>">
+                                <?php echo htmlspecialchars($apt['client_name'] . ' - ' . $apt['case_type'] . ' (' . date('M d, Y', strtotime($apt['date'])) . ')'); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -283,6 +346,61 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
 
     <script>
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+
+        // --- Custom client dropdown widget ---
+        const clientSelect = document.getElementById('clientSelect');
+        const clientDisplay = document.getElementById('clientDisplay');
+        const clientOptions = document.getElementById('clientOptions');
+        const clientText = document.getElementById('clientText');
+        const hiddenUser = document.getElementById('user_id');
+        const appointmentSelect = document.getElementById('appointment_id');
+
+        clientDisplay.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = clientOptions.style.display === 'block';
+            clientOptions.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) {
+                clientOptions.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+            }
+        });
+
+        clientOptions.addEventListener('click', function (e) {
+            const li = e.target.closest('li');
+            if (!li) return;
+            const value = li.getAttribute('data-value');
+            const name = li.getAttribute('data-name');
+            hiddenUser.value = value;
+            clientText.textContent = name || 'Select Client';
+            clientOptions.style.display = 'none';
+            filterAppointmentsByClient(value);
+        });
+
+        // Close the dropdown when clicking outside
+        document.addEventListener('click', function () {
+            clientOptions.style.display = 'none';
+        });
+
+        // Prevent clicks inside the options list from closing it
+        clientOptions.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        // --- Filter appointments dropdown by selected client ---
+        function filterAppointmentsByClient(clientId) {
+            const options = appointmentSelect.querySelectorAll('option[data-client]');
+            options.forEach(function (opt) {
+                if (!clientId) {
+                    opt.style.display = '';
+                } else {
+                    opt.style.display = opt.getAttribute('data-client') === clientId ? '' : 'none';
+                }
+            });
+            // Reset selection if currently chosen appointment no longer visible
+            const chosen = appointmentSelect.querySelector('option[value="' + appointmentSelect.value + '"]:visible');
+            if (appointmentSelect.value && !chosen) {
+                appointmentSelect.value = '';
+            }
+        }
     </script>
 </body>
 </html>

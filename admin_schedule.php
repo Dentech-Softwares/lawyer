@@ -75,11 +75,10 @@ $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
 $current_date = date('F j, Y');
 
-// Admin notifications - only count unviewed continuation appointments
-$continuationBadgeCount = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND created_at > ?",
-    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
-)['count'] ?? 0;
+// Admin notifications - count of flagged continuations for the sidebar badge
+    $continuationBadgeCount = getRow(
+        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
+    )['count'] ?? 0;
 
 $pendingAppointmentsCount = getRow(
     "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
@@ -92,7 +91,7 @@ $pendingAppointmentsCount = getRow(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule Appointments - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {

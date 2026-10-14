@@ -9,8 +9,9 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 $admin_username = $_SESSION['admin_username'];
-$admin_email = $_SESSION['admin_email'] ?? '';
-$current_date = date('F j, Y');
+    $admin_email = $_SESSION['admin_email'] ?? '';
+    $admin_phone = $_SESSION['admin_phone'] ?? '';
+    $current_date = date('F j, Y');
 
 // Get stats
 $totalAppointments = getRow("SELECT COUNT(*) as count FROM appointments");
@@ -42,6 +43,11 @@ $unreadAdminNotifications = getRow(
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
 $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
+
+    // Count of flagged continuations for the sidebar badge
+    $continuationBadgeCount = getRow(
+        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
+    )['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,7 +55,7 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
@@ -423,7 +429,7 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
     $sidebar_role = 'admin';
     $sidebar_badges = [
         'appointments' => $pendingAppointmentsCount,
-        'schedule' => $pendingAppointmentsCount,
+        'schedule' => $continuationBadgeCount,
     ];
     include 'includes/sidebar.php';
     ?>

@@ -247,6 +247,12 @@ require_once __DIR__ . '/includes/helpers.php';
         color: var(--dark);
     }
 
+    .profile-dropdown-value.muted {
+        font-weight: 400;
+        color: var(--gray);
+        font-style: italic;
+    }
+
     .profile-divider {
         height: 1px;
         background: var(--light-gray);
@@ -328,12 +334,14 @@ require_once __DIR__ . '/includes/helpers.php';
                     <span class="profile-dropdown-value"><?php echo htmlspecialchars($admin_username ?? ''); ?></span>
                 </div>
                 <div class="profile-dropdown-section">
-                    <span class="profile-dropdown-label">Contact Info</span>
-                    <span class="profile-dropdown-value"><?php echo htmlspecialchars($admin_email ?? ''); ?></span>
+                    <span class="profile-dropdown-label">Phone Number</span>
+                    <span class="profile-dropdown-value"><?php echo htmlspecialchars($admin_phone ?? 'N/A'); ?></span>
                 </div>
                 <div class="profile-dropdown-section">
-                    <span class="profile-dropdown-label">Current Date</span>
-                    <span class="profile-dropdown-value"><?php echo $current_date ?? ''; ?></span>
+                    <span class="profile-dropdown-label">Email Address</span>
+                    <span class="profile-dropdown-value <?php echo empty($admin_email) ? 'muted' : ''; ?>">
+                    <?php echo !empty($admin_email) ? htmlspecialchars($admin_email) : 'No Email provided'; ?>
+                </span>
                 </div>
                 <div class="profile-divider"></div>
                 <a href="logout.php" class="profile-dropdown-logout">

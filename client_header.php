@@ -252,6 +252,12 @@ require_once __DIR__ . '/includes/helpers.php';
         color: var(--dark);
     }
 
+    .profile-dropdown-value.muted {
+        font-weight: 400;
+        color: var(--gray);
+        font-style: italic;
+    }
+
     .profile-divider {
         height: 1px;
         background: var(--light-gray);
@@ -337,11 +343,17 @@ require_once __DIR__ . '/includes/helpers.php';
                 </div>
                 <div class="profile-dropdown-section">
                     <span class="profile-dropdown-label">Phone Number</span>
-                    <span class="profile-dropdown-value"><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></span>
+                    <span class="profile-dropdown-value"><?php echo htmlspecialchars(($user['phone'] ?? $_SESSION['user_phone'] ?? 'N/A')); ?></span>
                 </div>
                 <div class="profile-dropdown-section">
-                    <span class="profile-dropdown-label">Current Date</span>
-                    <span class="profile-dropdown-value"><?php echo $current_date ?? ''; ?></span>
+                    <span class="profile-dropdown-label">Email Address</span>
+                    <?php
+                    $profile_email = is_array($user ?? null) ? ($user['email'] ?? null) : null;
+                    $profile_email = $profile_email ?: ($_SESSION['user_email'] ?? '');
+                    ?>
+                    <span class="profile-dropdown-value <?php echo empty($profile_email) ? 'muted' : ''; ?>">
+                        <?php echo !empty($profile_email) ? htmlspecialchars($profile_email) : 'No Email provided'; ?>
+                    </span>
                 </div>
                 <div class="profile-divider"></div>
                 <a href="logout.php" class="profile-dropdown-logout">

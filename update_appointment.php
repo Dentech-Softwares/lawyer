@@ -5,6 +5,7 @@
  */
 
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
@@ -64,6 +65,13 @@ if ($result) {
         "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
         [$appointment['user_id'], $notificationMessage]
     );
+    
+    // Send SMS to client
+    $user = getRow("SELECT phone, name FROM users WHERE id = ?", [$appointment['user_id']]);
+    if ($user && !empty($user['phone'])) {
+        $smsMsg = "Dear {$user['name']}, your appointment (ID: {$id}) has been {$newStatus}. - Justice Law Firm";
+        sendSMS($user['phone'], $smsMsg);
+    }
 }
 
 // Redirect back to appointments page

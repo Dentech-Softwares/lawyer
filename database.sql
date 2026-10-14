@@ -4,14 +4,16 @@ CREATE DATABASE IF NOT EXISTS lawyer_system;
 USE lawyer_system;
 
 -- Users table (clients)
+-- Email is now optional (may be NULL); phone must be unique.
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(100) DEFAULT NULL,
     phone VARCHAR(20) NOT NULL,
     password VARCHAR(255) NOT NULL,
     is_blocked TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_phone (phone)
 );
 
 -- Admin users table
@@ -94,3 +96,17 @@ INSERT INTO admin_users (username, email, password) VALUES
 
 -- Migration: Add notes to appointments (if missing)
 -- ALTER TABLE appointments ADD COLUMN IF NOT EXISTS notes TEXT AFTER message;
+
+-- Migration: Make email optional and enforce unique phone (for existing databases)
+-- ALTER TABLE users MODIFY COLUMN email VARCHAR(100) DEFAULT NULL;
+-- ALTER TABLE users DROP INDEX IF EXISTS email;
+-- ALTER TABLE users ADD UNIQUE KEY IF NOT EXISTS unique_phone (phone);
+
+-- SMS logs table for OpenSMS integration
+CREATE TABLE IF NOT EXISTS sms_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_phone VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('sent', 'failed', 'pending') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

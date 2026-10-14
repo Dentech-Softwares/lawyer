@@ -18,41 +18,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     
-    // Validation
-    if (empty($name) || empty($email) || empty($phone) || empty($password) || empty($confirm_password)) {
-        $error = 'All fields are required';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // Validation - only name, phone and password are mandatory (email is optional)
+    if (empty($name) || empty($phone) || empty($password) || empty($confirm_password)) {
+        $error = 'Full Name, Phone Number and Password are required';
+    } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address';
     } elseif (strlen($password) < 6) {
         $error = 'Password must be at least 6 characters';
     } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match';
     } else {
-        // Check if email already exists
-        $existingUser = getRow("SELECT id FROM users WHERE email = ?", [$email]);
+        // Check if phone number already exists
+        $existingPhone = getRow("SELECT id FROM users WHERE phone = ?", [$phone]);
         
-        if ($existingUser) {
-            $error = 'Email already registered. Please login.';
+        if ($existingPhone) {
+            $error = 'This phone number is already registered. Please login or use a different phone number.';
+        } elseif (!empty($email)) {
+            // Check if email already exists (only when an email was provided)
+            $existingEmail = getRow("SELECT id FROM users WHERE email = ?", [$email]);
+            
+            if ($existingEmail) {
+                $error = 'This email address is already registered. Please login.';
+            } else {
+                // Proceed with registration
+                $result = registerUser($name, $email, $phone, $password);
+                if ($result['success']) {
+                    $success = 'Registration successful! Redirecting to login...';
+                    header('refresh:2;url=login.php');
+                } else {
+                    $error = $result['message'];
+                }
+            }
         } else {
-            // Hash password
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            
-            // Insert user
-            $result = execute(
-                "INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)",
-                [$name, $email, $phone, $hashed_password]
-            );
-            
-            if ($result) {
+            // No email provided - proceed with registration
+            $result = registerUser($name, $email, $phone, $password);
+            if ($result['success']) {
                 $success = 'Registration successful! Redirecting to login...';
-                
-                // Redirect after short delay
                 header('refresh:2;url=login.php');
             } else {
-                $error = 'Registration failed. Please try again.';
+                $error = $result['message'];
             }
         }
     }
+}
+
+/**
+ * Create a new user account.
+ * Email is stored as NULL when not provided.
+ */
+function registerUser($name, $email, $phone, $password) {
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    $email = !empty($email) ? $email : null;
+    
+    $result = execute(
+        "INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)",
+        [$name, $email, $phone, $hashed_password]
+    );
+    
+    if ($result) {
+        return ['success' => true, 'message' => ''];
+    }
+    return ['success' => false, 'message' => 'Registration failed. Please try again.'];
 }
 ?>
 <!DOCTYPE html>
@@ -61,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -414,9 +440,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 <div class="form-group">
                     <label for="email">
-                        <i class="fas fa-envelope"></i> Email Address
+                        <i class="fas fa-envelope"></i> Email Address <span style="color: var(--gray); font-weight: 400;">(optional)</span>
                     </label>
-                    <input type="email" id="email" name="email" placeholder="john@example.com" required>
+                    <input type="email" id="email" name="email" placeholder="john@example.com">
                 </div>
                 
                 <div class="form-group">
@@ -491,12 +517,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const registerForm = document.getElementById('registerForm');
         
         registerForm.addEventListener('submit', function(e) {
+            const name = document.getElementById('name').value.trim();
+            const phone = document.getElementById('phone').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (!name || !phone) {
+                e.preventDefault();
+                alert('Full Name and Phone Number are required!');
+                return;
+            }
             
             if (password !== confirmPassword) {
                 e.preventDefault();
                 alert('Passwords do not match!');
+                return;
             }
             
             if (password.length < 6) {

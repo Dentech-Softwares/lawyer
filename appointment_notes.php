@@ -9,9 +9,10 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 // Admin header data
-$admin_username = $_SESSION['admin_username'];
-$admin_email = $_SESSION['admin_email'] ?? '';
-$current_date = date('F j, Y');
+    $admin_username = $_SESSION['admin_username'];
+    $admin_email = $_SESSION['admin_email'] ?? '';
+    $admin_phone = $_SESSION['admin_phone'] ?? '';
+    $current_date = date('F j, Y');
 
 // Get admin notifications (pending appointment requests)
 $adminNotifications = getAllRows(
@@ -26,6 +27,7 @@ $unreadAdminNotifications = getRow(
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
 $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
+    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1")['count'] ?? 0;
 
 $success = '';
 $error = '';
@@ -72,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Notes - Justice Law Firm</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {
@@ -382,7 +384,7 @@ body {
     $sidebar_role = 'admin';
     $sidebar_badges = [
         'appointments' => $pendingAppointmentsCount,
-        'schedule' => $pendingAppointmentsCount,
+        'schedule' => $continuationBadgeCount,
     ];
     include 'includes/sidebar.php';
     ?>

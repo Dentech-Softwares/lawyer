@@ -6,6 +6,7 @@
 // corresponding payment and appointment records in the database.
 
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 header('Content-Type: application/json');
 
@@ -166,6 +167,19 @@ if ($resultCode === 0) {
         . PHP_EOL,
         FILE_APPEND | LOCK_EX
     );
+    
+    // Send payment confirmation SMS
+    $payInfo = getRow("SELECT p.appointment_id, p.phone_number, a.user_id FROM payments p LEFT JOIN appointments a ON p.appointment_id = a.id WHERE p.checkout_request_id = ?", [$checkoutRequestId]);
+    if ($payInfo) {
+        $user = getRow("SELECT name, phone FROM users WHERE id = ?", [$payInfo['user_id']]);
+        if ($user && !empty($user['phone'])) {
+            $smsMsg = "Dear {$user['name']}, your payment of KES {$transactionAmount} has been received (Receipt: {$mpesaReceiptNumber}). Thank you. - Justice Law Firm";
+            sendSMS($user['phone'], $smsMsg);
+        } elseif (!empty($payInfo['phone_number'])) {
+            $smsMsg = "Dear client, your payment of KES {$transactionAmount} has been received (Receipt: {$mpesaReceiptNumber}). Thank you. - Justice Law Firm";
+            sendSMS($payInfo['phone_number'], $smsMsg);
+        }
+    }
 
 } else {
     // ---------------------------------------------------------------

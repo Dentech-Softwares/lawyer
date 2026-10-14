@@ -22,23 +22,25 @@ if (isset($_SESSION['admin_id'])) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $login_input = trim($_POST['login'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    // Validation
-    if (empty($email) || empty($password)) {
-        $error = 'Email and password are required';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address';
+    // Validation - accept either email address or phone number
+    if (empty($login_input) || empty($password)) {
+        $error = 'Email/Phone and password are required';
     } else {
-        // First check admin users table
-        $admin = getRow("SELECT * FROM admin_users WHERE email = ?", [$email]);
+        // First check admin users table (admins always log in with email)
+        $admin = null;
+        if (filter_var($login_input, FILTER_VALIDATE_EMAIL)) {
+            $admin = getRow("SELECT * FROM admin_users WHERE email = ?", [$login_input]);
+        }
         
         if ($admin && password_verify($password, $admin['password'])) {
             // Admin login successful
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_username'] = $admin['username'];
             $_SESSION['admin_email'] = $admin['email'];
+            $_SESSION['admin_phone'] = $admin['phone'] ?? '';
             $_SESSION['last_activity'] = time();
             
             // Redirect to admin dashboard
@@ -46,8 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit;
         }
         
-        // Then check regular users table
-        $user = getRow("SELECT * FROM users WHERE email = ?", [$email]);
+        // Then check regular users table - match by email OR phone
+        $user = getRow(
+            "SELECT * FROM users WHERE email = ? OR phone = ?",
+            [$login_input, $login_input]
+        );
         
         if ($user) {
             // Check if user is blocked
@@ -58,16 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_phone'] = $user['phone'];
                 $_SESSION['last_activity'] = time();
                 
                 // Redirect to dashboard
                 header('Location: client_dashboard.php');
                 exit;
             } else {
-                $error = 'Invalid email or password';
+                $error = 'Invalid email/phone or password';
             }
         } else {
-            $error = 'Invalid email or password';
+            $error = 'Invalid email/phone or password';
         }
     }
 }
@@ -78,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -407,10 +413,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="login-container">
-        <div class="login-header">
+<div class="login-header">
             <i class="fas fa-gavel"></i>
             <h1>Welcome Back</h1>
-            <p>Login with your email address</p>
+            <p>Login with your email address or phone number</p>
         </div>
         
         <div class="login-body">
@@ -428,10 +434,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <form method="POST" action="">
                 <div class="form-group">
-                    <label for="email">
-                        <i class="fas fa-envelope"></i> Email Address
+                    <label for="login">
+                        <i class="fas fa-user"></i> Email Address or Phone Number
                     </label>
-                    <input type="email" id="email" name="email" placeholder="john@example.com" required>
+                    <input type="text" id="login" name="login" placeholder="john@example.com or +1 (555) 123-4567" required>
                 </div>
                 
                 <div class="form-group">
@@ -454,7 +460,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </button>
             </form>
 
-           
+            
 
             <div class="register-link">
                 Don't have an account? <a href="register.php">Register here</a>
@@ -473,10 +479,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const loginForm = document.querySelector('form');
         
         loginForm.addEventListener('submit', function(e) {
-            const email = document.getElementById('email').value;
+            const login = document.getElementById('login').value;
             const password = document.getElementById('password').value;
             
-            if (!email || !password) {
+            if (!login || !password) {
                 e.preventDefault();
                 alert('Please fill in all fields');
             }

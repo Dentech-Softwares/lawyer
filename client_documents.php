@@ -51,6 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document'])) {
                     [$user_id, $appointment_id, $fileName, $filePath, $storedType]
                 );
                 $uploadSuccess = 'Document uploaded successfully!';
+                
+                // Send SMS notification
+                $user = getRow("SELECT name, phone FROM users WHERE id = ?", [$user_id]);
+                if ($user && !empty($user['phone'])) {
+                    $smsMsg = "Dear {$user['name']}, a new document ({$fileName}) has been uploaded to your file. - Justice Law Firm";
+                    sendSMS($user['phone'], $smsMsg);
+                }
             } else {
                 $uploadError = 'Failed to upload document. Check directory permissions.';
             }
@@ -92,7 +99,7 @@ $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE use
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Documents - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
     <style>
         :root {

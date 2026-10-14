@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 $success = '';
 $error = '';
@@ -94,6 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     [$user_id, 'Your appointment has been submitted successfully. We will review it shortly.']
                 );
                 
+                // Send SMS confirmation
+                if (!empty($phone)) {
+                    $smsMsg = "Dear {$full_name}, your appointment for {$case_type} on {$date} at {$time} has been submitted. We will review it shortly. - Justice Law Firm";
+                    sendSMS($phone, $smsMsg);
+                }
+                
                 $_SESSION['success'] = 'Appointment booked successfully! Proceed to payment.';
                 $_SESSION['booking_appointment_id'] = $appointmentId;
                 header("Location: book_appointment.php?appointment_id=" . $appointmentId);
@@ -111,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Appointment - Justice Law Firm</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <style>
         :root {
             --primary: #1a3a5c;
