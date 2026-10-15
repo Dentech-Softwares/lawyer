@@ -69,7 +69,7 @@ $documents = getAllRows(
 
 // Header data based on role
 if ($isAdmin) {
-    $admin_username = $_SESSION['admin_username'];
+    $admin_username = $_SESSION['admin_username'] ?? '';
     $admin_email = $_SESSION['admin_email'] ?? '';
     $admin_phone = $_SESSION['admin_phone'] ?? '';
     $current_date = date('F j, Y');
@@ -89,7 +89,7 @@ if ($isAdmin) {
     $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 } else {
     $user_id = $_SESSION['user_id'];
-    $user_name = $_SESSION['user_name'];
+    $user_name = $_SESSION['user_name'] ?? '';
     $user_email = $_SESSION['user_email'] ?? '';
     $current_date = date('F j, Y');
     $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
@@ -673,7 +673,7 @@ if ($isAdmin) {
                 <div class="detail-grid">
                     <div class="detail-item">
                         <span class="detail-label">Case Type</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment['case_type']); ?></span>
+                        <span class="detail-value"><?php echo htmlspecialchars($appointment['case_type'] ?? ''); ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Status</span>
@@ -708,11 +708,11 @@ if ($isAdmin) {
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Name</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_name']); ?></span>
+                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_name'] ?? ''); ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Email</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment[.client_email.] ?? ); ?></span>
+                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_email'] ?? ''); ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Phone</span>
@@ -771,8 +771,8 @@ if ($isAdmin) {
                                     $noteTime = $lines[0] ?? '';
                                     $noteText = implode("\n", array_slice($lines, 1));
                                     ?>
-                                    <div class="note-time"><?php echo htmlspecialchars($noteTime); ?></div>
-                                    <div class="note-text"><?php echo nl2br(htmlspecialchars($noteText)); ?></div>
+                                    <div class="note-time"><?php echo htmlspecialchars($noteTime ?? ''); ?></div>
+                                    <div class="note-text"><?php echo nl2br(htmlspecialchars($noteText ?? '')); ?></div>
                                 </div>
                             <?php endif; ?>
                         <?php endforeach; ?>
@@ -788,7 +788,7 @@ if ($isAdmin) {
                             <i class="fas fa-plus"></i> Add / Update Case Notes
                         </label>
                         <textarea id="notes" name="notes" 
-                                  placeholder="Enter case notes, updates, or observations... Each entry will be timestamped."><?php echo htmlspecialchars($notes); ?></textarea>
+                                  placeholder="Enter case notes, updates, or observations... Each entry will be timestamped."><?php echo htmlspecialchars($notes ?? ''); ?></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="submit" name="update_notes" class="btn btn-primary">
