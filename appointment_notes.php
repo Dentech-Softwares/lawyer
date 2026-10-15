@@ -27,7 +27,7 @@ $unreadAdminNotifications = getRow(
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
 $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
-    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1")['count'] ?? 0;
+    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed'")['count'] ?? 0;
 
 $success = '';
 $error = '';
@@ -430,14 +430,31 @@ body {
                                 <small><?php echo date('h:i A', strtotime($appointment['time'])); ?></small>
                             </span>
                         </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Status</span>
-                            <span class="detail-value">
-                                <span class="status-badge <?php echo $appointment['status']; ?>">
-                                    <?php echo ucfirst($appointment['status']); ?>
-                                </span>
-                            </span>
-                        </div>
+<div class="detail-item">
+                             <span class="detail-label">Status</span>
+                             <span class="detail-value">
+                                 <span class="status-badge <?php echo $appointment['status']; ?>">
+                                     <?php echo ucfirst($appointment['status']); ?>
+                                 </span>
+                                 <?php if ($appointment['is_continuation']): ?>
+                                     <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent); margin-left: 0.5rem;">
+                                         <i class="fas fa-sync-alt"></i> Continuing Case
+                                     </span>
+                                 <?php endif; ?>
+                             </span>
+                         </div>
+                         <div class="detail-item">
+                             <span class="detail-label">Continuation</span>
+                             <span class="detail-value">
+                                 <?php if ($appointment['is_continuation']): ?>
+                                     <span style="color: var(--accent); font-weight: 600;">
+                                         <i class="fas fa-sync-alt"></i> Yes - This is a continuing case
+                                     </span>
+                                 <?php else: ?>
+                                     <span style="color: var(--gray);">No</span>
+                                 <?php endif; ?>
+                             </span>
+                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Client Message</span>
                             <span class="detail-value"><?php echo nl2br(htmlspecialchars($appointment['message'] ?? '')); ?></span>

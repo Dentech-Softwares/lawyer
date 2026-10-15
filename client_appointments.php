@@ -14,7 +14,7 @@ $current_date = date('F j, Y');
 
 // Calculate badge count BEFORE updating last view timestamp
 $lastView = $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00';
-$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $lastView])['count'] ?? 0;
+$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND is_read = 0", [$user_id])["count"] ?? 0;
 
 // NOW mark appointments as viewed (for badge clearing on NEXT visit)
 $_SESSION['user_last_appointments_view'] = date('Y-m-d H:i:s');
@@ -171,16 +171,27 @@ $unreadNotifications = getRow(
                 <?php if(!empty($appointments)): ?>
                     <table class="appointments-table">
                         <thead>
-                             <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th></tr>
+                             <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th><th>Continuation</th></tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
                                 <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
-                                    <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
-                                     <td><?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 50))); ?><?php echo strlen($apt['message'] ?? '') > 50 ? '...' : ''; ?></td>
+<td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
+                                      <td><?php echo nl2br(htmlspecialchars(substr($apt['message'] ?? '', 0, 50))); ?><?php echo strlen($apt['message'] ?? '') > 50 ? '...' : ''; ?></td>
 <td><span class="status-badge <?php echo $apt['status']; ?>"><?php echo ucfirst($apt['status']); ?></span></td>
+<td style="text-align: center;">
+                                          <?php if ($apt['is_continuation']): ?>
+                                              <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
+                                                  Yes
+                                              </span>
+                                          <?php else: ?>
+                                              <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                                  No
+                                              </span>
+                                          <?php endif; ?>
+                                      </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

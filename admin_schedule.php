@@ -76,14 +76,9 @@ $admin_email = $_SESSION['admin_email'] ?? '';
 $current_date = date('F j, Y');
 
 // Admin notifications - count of flagged continuations for the sidebar badge
-    $continuationBadgeCount = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
-    )['count'] ?? 0;
+$continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 
-$pendingAppointmentsCount = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
-    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
-)['count'] ?? 0;
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -343,7 +338,6 @@ $pendingAppointmentsCount = getRow(
                                 <th>Date & Time</th>
                                 <th>Status</th>
                                 <th>Continuation</th>
-                                <th style="width: 60px;"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -367,18 +361,13 @@ $pendingAppointmentsCount = getRow(
                                 <td style="text-align: center;">
                                     <?php if ($apt['is_continuation']): ?>
                                         <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
-                                            <i class="fas fa-sync-alt"></i> Yes
+                                            Yes
                                         </span>
                                     <?php else: ?>
                                         <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
-                                            <i class="fas fa-minus"></i> No
+                                            No
                                         </span>
                                     <?php endif; ?>
-                                </td>
-                                <td style="text-align: right;">
-                                    <a href="appointment_details.php?id=<?php echo $apt['id']; ?>" class="btn-view" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

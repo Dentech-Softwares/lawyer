@@ -108,7 +108,7 @@ $unreadAdminNotifications = getRow(
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
 $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
-    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1")['count'] ?? 0;
+    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed'")['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">

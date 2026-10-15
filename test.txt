@@ -1,0 +1,11 @@
+                                    <th>Continuation</th>
+                                </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($appointments as $apt): ?>
+                                <tr class="appointment-row <?php echo $apt['is_read'] == 0 ? 'unread' : ''; ?>" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($apt['client_name']); ?></strong><br>
+                                        <small><?php echo htmlspecialchars($apt['client_email']); ?></small><br>
+                                        <small><?php echo htmlspecialchars($apt['client_phone']); ?></small>
+                                    </td>

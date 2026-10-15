@@ -9,9 +9,9 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 $admin_username = $_SESSION['admin_username'];
-    $admin_email = $_SESSION['admin_email'] ?? '';
-    $admin_phone = $_SESSION['admin_phone'] ?? '';
-    $current_date = date('F j, Y');
+$admin_email = $_SESSION['admin_email'] ?? '';
+$admin_phone = $_SESSION['admin_phone'] ?? '';
+$current_date = date('F j, Y');
 
 // Get stats
 $totalAppointments = getRow("SELECT COUNT(*) as count FROM appointments");
@@ -38,16 +38,10 @@ $adminNotifications = getAllRows(
      ORDER BY a.created_at DESC LIMIT 5"
 );
 
-$unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
-    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
-);
-$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
 
-    // Count of flagged continuations for the sidebar badge
-    $continuationBadgeCount = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
-    )['count'] ?? 0;
+// Count of flagged continuations for the sidebar badge
+$continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -527,10 +521,11 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                             <tr>
                                 <th>Client</th>
                                 <th>Case Type</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                            </tr>
+<th>Date</th>
+                                 <th>Time</th>
+                                 <th>Status</th>
+                                 <th>Continuation</th>
+                             </tr>
                     </thead>
                     <tbody>
                         <?php if(!empty($recentAppointments)): ?>
@@ -542,12 +537,23 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                                     </td>
                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
-                                    <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
-                                    <td>
-                                        <span class="status-badge <?php echo $apt['status']; ?>">
-                                            <?php echo ucfirst($apt['status']); ?>
-                                        </span>
-                                    </td>
+<td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>
+                                     <td>
+                                         <span class="status-badge <?php echo $apt['status']; ?>">
+                                             <?php echo ucfirst($apt['status']); ?>
+                                         </span>
+                                     </td>
+<td style="text-align: center;">
+                                          <?php if ($apt['is_continuation']): ?>
+                                              <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
+                                                  Yes
+                                              </span>
+                                          <?php else: ?>
+                                              <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                                  No
+                                              </span>
+                                          <?php endif; ?>
+                                      </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>

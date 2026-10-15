@@ -1,19 +1,12 @@
 <?php
 require_once 'db.php';
 require_once 'includes/helpers.php';
-
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit;
 }
-
-// Calculate badge count BEFORE updating last view timestamp
-$lastView = $_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00';
-$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?", [$lastView])['count'] ?? 0;
-
-// NOW mark appointments as viewed (for badge clearing on NEXT visit)
-$_SESSION['admin_last_appointments_view'] = date('Y-m-d H:i:s');
 
 // Get filter values
 $statusFilter = $_GET['status'] ?? '';
@@ -21,7 +14,7 @@ $dateFilter = $_GET['date'] ?? '';
 $caseTypeFilter = $_GET['case_type'] ?? '';
 
 // Build query
-$sql = "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone 
+$sql = "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone, a.is_read 
         FROM appointments a 
         JOIN users u ON a.user_id = u.id 
         WHERE 1=1";
@@ -43,7 +36,7 @@ if ($caseTypeFilter) {
     $params[] = $caseTypeFilter;
 }
 
-$sql .= " ORDER BY a.date DESC, a.time DESC";
+$sql .= " ORDER BY a.created_at DESC";
 
 $appointments = getAllRows($sql, $params);
 
@@ -56,25 +49,8 @@ $caseTypes = getAllRows("SELECT DISTINCT case_type FROM appointments ORDER BY ca
     $admin_phone = $_SESSION['admin_phone'] ?? '';
     $current_date = date('F j, Y');
 
-// Get admin notifications (pending appointment requests)
-$adminNotifications = getAllRows(
-    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
-     FROM appointments a
-     JOIN users u ON a.user_id = u.id
-     WHERE a.status = 'pending' 
-     ORDER BY a.created_at DESC LIMIT 5"
-);
-$lastView = $_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00';
-$unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
-    [$lastView]
-);
-$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
-
-    // Count of flagged continuations for the sidebar badge
-    $continuationBadgeCount = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
-    )['count'] ?? 0;
+// Count of flagged continuations for the sidebar badge
+$continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -274,6 +250,12 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
 
         table.appointments-table tr.appointment-row:active {
             background: #e8eef5;
+        }
+
+        /* Highlight unread rows */
+        table.appointments-table tr.unread {
+            background-color: #f8f9fa;
+            border-left: 4px solid #f0ad4e;
         }
 
         .status-badge {
@@ -506,16 +488,18 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                     <table class="appointments-table">
                         <thead>
                                 <tr>
+                                    <th>Case #</th>
                                     <th>Client Info</th>
                                     <th>Case Type</th>
                                     <th>Date & Time</th>
-                                    <th>Message</th>
                                     <th>Status</th>
+                                    <th>Continuation</th>
                                 </tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
-                                <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
+                                <tr class="appointment-row <?php echo $apt['is_read'] == 0 ? 'unread' : ''; ?>" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
+                                                <td>#<?php echo $apt['id']; ?></td>
                                     <td>
                                         <strong><?php echo htmlspecialchars($apt['client_name']); ?></strong><br>
                                         <small><?php echo htmlspecialchars($apt['client_email']); ?></small><br>
@@ -525,16 +509,23 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                                     <td>
                                         <?php echo date('M d, Y', strtotime($apt['date'])); ?><br>
                                         <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
-                                     </td>
-                                     <td class="message-cell" title="<?php echo htmlspecialchars($apt['message'] ?? ''); ?>">
-                                         <?php echo htmlspecialchars(substr($apt['message'] ?? '', 0, 40)); ?>
-                                         <?php echo strlen($apt['message'] ?? '') > 40 ? '...' : ''; ?>
-                                     </td>
-<td>
-                                          <span class="status-badge <?php echo $apt['status']; ?>">
-                                             <?php echo ucfirst($apt['status']); ?>
-                                         </span>
-                                     </td>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <?php echo $apt['status']; ?>">
+                                           <?php echo ucfirst($apt['status']); ?>
+                                       </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <?php if ($apt['is_continuation']): ?>
+                                            <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
+                                                Yes
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                                No
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

@@ -101,12 +101,9 @@ $unreadAdminNotifications = getRow(
     "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
     [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
 );
-$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
-
-    // Count of flagged continuations for the sidebar badge
-    $continuationBadgeCount = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
-    )['count'] ?? 0;
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
+// Count of flagged continuations for the sidebar badge
+$continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -247,7 +244,7 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
         <!-- Upload Form -->
         <div class="upload-section">
             <h2><i class="fas fa-cloud-upload-alt"></i> Upload New Document</h2>
-            <form class="upload-form" method="POST" enctype="multipart/form-data">
+            <form class="upload-form" method="POST" enctype="multipart/form-data" style="display: flex; align-items: flex-end; gap: 12px; width: 100%; flex-wrap: wrap;">
                 <div class="form-group" style="min-width: 200px;">
                     <label for="user_id">Client <span style="color: var(--danger);">*</span></label>
                     <div class="custom-select" id="clientSelect">
@@ -277,11 +274,11 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="form-group" style="flex: 1; min-width: 250px;">
-                    <label for="document">File <span style="color: var(--danger);">*</span></label>
+                <div class="form-group" style="flex-grow: 1; min-width: 250px;">
+                    <label for="document">File <span style="color: var(--danger);">*</span> <span style="font-size: small; font-style: italic; font-weight: normal;">(PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</span></label>
                     <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
+                <button type="submit" class="btn btn-primary" style="height: 46px; margin-top: 0;"><i class="fas fa-upload"></i> Upload</button>
             </form>
         </div>
 

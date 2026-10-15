@@ -91,7 +91,7 @@ $unreadNotifications = getRow(
 $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
 
 $lastView = $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00';
-$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $lastView])['count'] ?? 0;
+$userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND is_read = 0", [$user_id])["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -194,10 +194,10 @@ $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE use
                     <input type="hidden" name="appointment_id" value="<?php echo (int)$_GET['appointment_id']; ?>">
                 <?php endif; ?>
                 <div class="form-group">
-                    <label for="document">Select File (PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</label>
+                    <label for="document">Select File <span style="font-size: small; font-style: italic; font-weight: normal;">(PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</span></label>
                     <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
+                <button type="submit" class="btn btn-primary" style="height: 46px;"><i class="fas fa-upload"></i> Upload</button>
             </form>
         </div>
 

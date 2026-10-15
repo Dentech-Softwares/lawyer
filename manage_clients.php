@@ -25,31 +25,17 @@ $sql .= " ORDER BY created_at DESC";
 
 $clients = getAllRows($sql, $params);
 
-// Admin header data
+        // Admin header data
     $admin_username = $_SESSION['admin_username'];
     $admin_email = $_SESSION['admin_email'] ?? '';
     $admin_phone = $_SESSION['admin_phone'] ?? '';
     $current_date = date('F j, Y');
 
-// Get admin notifications (pending appointment requests)
-$adminNotifications = getAllRows(
-    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
-     FROM appointments a
-     JOIN users u ON a.user_id = u.id
-     WHERE a.status = 'pending' 
-     ORDER BY a.created_at DESC LIMIT 5"
-);
-$unreadAdminNotifications = getRow(
-    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
-    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
-);
-$pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
-    $blockedClientsCount = getRow("SELECT COUNT(*) as count FROM users WHERE is_blocked = 1")['count'] ?? 0;
+$pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
+$blockedClientsCount = getRow("SELECT COUNT(*) as count FROM users WHERE is_blocked = 1")['count'] ?? 0;
 
-    // Count of flagged continuations for the sidebar badge
-    $continuationBadgeCount = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1"
-    )['count'] ?? 0;
+// Count of flagged continuations for the sidebar badge
+$continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">

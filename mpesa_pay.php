@@ -47,6 +47,8 @@ function envValue($key, $default = '') {
 
 function mpesaError($message, $details = [], $statusCode = 400) {
     http_response_code($statusCode);
+    if (ob_get_level()) ob_clean();
+    header('Content-Type: application/json');
     echo json_encode(array_merge(['status' => 'error', 'message' => $message], $details));
     exit;
 }
@@ -58,31 +60,20 @@ function mpesaError($message, $details = [], $statusCode = 400) {
 $oauthUrl       = 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
 $stkPushUrl     = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
 
-// Consumer Key / Secret from .env (register at developer.safaricom.co.ke)
-$consumerKey    = envValue('MPESA_SANDBOX_CONSUMER_KEY');
-$consumerSecret = envValue('MPESA_SANDBOX_CONSUMER_SECRET');
+// Consumer Key / Secret from Sandbox credentials
+$consumerKey    = 'jHG9GdLX1i9pcmh1MTYTkxnBol7XWqsY6GGGJn3qRyi4IJBe';
+$consumerSecret = 'E0rK9q3K2pHBm5t4WdgJQXursk54DUcpsT0kAGCGVVeN2chFhgCeZrBeb8L1972I';
 
-// Sandbox Shortcode and Passkey (defaults are Safaricom's published test values)
-$businessShortCode = envValue('MPESA_BUSINESS_SHORTCODE', '174379');
-$passkey           = envValue('MPESA_PASSKEY', 'bfb279f9aa9bdbc158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c9192');
-$callbackUrl       = envValue('MPESA_CALLBACK_URL');
+// Sandbox Shortcode and Passkey
+$businessShortCode = '174379';
+$passkey           = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919';
+$callbackUrl       = envValue('MPESA_CALLBACK_URL', 'https://your-domain.com/mpesa_callback.php');
 
 // Validate required configuration
-$missingConfig = [];
-if ($consumerKey === '' || strpos($consumerKey, 'your_') === 0) {
-    $missingConfig[] = 'MPESA_SANDBOX_CONSUMER_KEY';
-}
-if ($consumerSecret === '' || strpos($consumerSecret, 'your_') === 0) {
-    $missingConfig[] = 'MPESA_SANDBOX_CONSUMER_SECRET';
-}
-if ($callbackUrl === '' || strpos($callbackUrl, 'your-') === 0) {
-    $missingConfig[] = 'MPESA_CALLBACK_URL (must be a public HTTPS URL)';
-}
-
-if (!empty($missingConfig)) {
+if (empty($callbackUrl)) {
     mpesaError(
-        'M-Pesa sandbox configuration is incomplete: ' . implode(', ', $missingConfig),
-        ['hint' => 'Register at https://developer.safaricom.co.ke and add credentials to your .env file'],
+        'M-Pesa sandbox configuration is incomplete: MPESA_CALLBACK_URL not set',
+        ['hint' => 'Set MPESA_CALLBACK_URL in your .env file (must be a public HTTPS URL)'],
         500
     );
 }
@@ -111,10 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['checkout_request_id']))
 
     if (!$payment) {
         http_response_code(404);
+        if (ob_get_level()) ob_clean();
+        header('Content-Type: application/json');
         echo json_encode(['status' => 'error', 'message' => 'Payment request not found']);
         exit;
     }
 
+    if (ob_get_level()) ob_clean();
+    header('Content-Type: application/json');
     echo json_encode([
         'status'             => 'success',
         'payment_status'     => $payment['status'],
@@ -127,6 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['checkout_request_id']))
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if (ob_get_level()) ob_clean();
+    header('Content-Type: application/json');
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method']);
     exit;
 }
@@ -214,14 +211,53 @@ if (empty($phoneNumber)) {
 // 3. Calculate fee based on payment type
 // ---------------------------------------------------------------------
 if ($paymentType === 'continuation') {
-    $amount = CONTINUATION_FEE;
+    // First check session for pre-calculated continuation fee (set by continue_case.php)
+    if (isset($_SESSION['continuation_fee']) && isset($_SESSION['continue_appointment_id']) && $_SESSION['continue_appointment_id'] == $appointmentId) {
+        $amount = $_SESSION['continuation_fee'];
+    } else {
+        // Check if this is a continuation appointment with original_appointment_id
+        $appointment = getRow("SELECT original_appointment_id FROM appointments WHERE id = ?", [$appointmentId]);
+        $originalAppointmentId = $appointment['original_appointment_id'] ?? $appointmentId;
+        
+        // Get the original payment amount for the parent appointment
+        $originalPayment = getRow(
+            "SELECT amount FROM payments WHERE appointment_id = ? AND status = 'COMPLETED' ORDER BY created_at DESC LIMIT 1",
+            [$originalAppointmentId]
+        );
+        if ($originalPayment && $originalPayment['amount'] > 0) {
+            $amount = round($originalPayment['amount'] * 0.5, 2);
+        } else {
+            $amount = CONTINUATION_FEE; // fallback
+        }
+    }
 } else {
     $amount = BOOKING_FEE;
 }
 
 if ($paymentMethod === 'cash') {
     global $conn;
-    $amount = ($paymentType === 'continuation') ? 250 : 500;
+    
+    // Recalculate amount for cash payments
+    if ($paymentType === 'continuation') {
+        if (isset($_SESSION['continuation_fee']) && isset($_SESSION['continue_appointment_id']) && $_SESSION['continue_appointment_id'] == $appointmentId) {
+            $amount = $_SESSION['continuation_fee'];
+        } else {
+            $appointment = getRow("SELECT original_appointment_id FROM appointments WHERE id = ?", [$appointmentId]);
+            $originalAppointmentId = $appointment['original_appointment_id'] ?? $appointmentId;
+            
+            $originalPayment = getRow(
+                "SELECT amount FROM payments WHERE appointment_id = ? AND status = 'COMPLETED' ORDER BY created_at DESC LIMIT 1",
+                [$originalAppointmentId]
+            );
+            if ($originalPayment && $originalPayment['amount'] > 0) {
+                $amount = round($originalPayment['amount'] * 0.5, 2);
+            } else {
+                $amount = CONTINUATION_FEE;
+            }
+        }
+    } else {
+        $amount = BOOKING_FEE;
+    }
     
     // Insert payment record as COMPLETED for cash
     $sql = "INSERT INTO payments (appointment_id, amount, phone_number, status, mpesa_receipt_number, created_at, updated_at)
@@ -229,14 +265,16 @@ if ($paymentMethod === 'cash') {
     $receiptRef = 'CASH_' . time() . '_' . $appointmentId;
     execute($sql, [$appointmentId, $amount, $phoneNumber, $receiptRef]);
     
-    // Update appointment if it's a booking payment? For continuation maybe just mark paid via notifications
-    // Send SMS confirmation
+    // Send SMS confirmation (suppress any output)
     $user = getRow("SELECT u.name, u.phone FROM users u JOIN appointments a ON u.id = a.user_id WHERE a.id = ?", [$appointmentId]);
     if ($user && !empty($user['phone'])) {
         $smsMsg = "Dear {$user['name']}, cash payment of KES {$amount} has been recorded (Receipt: {$receiptRef}). - Justice Law Firm";
-        sendSMS($user['phone'], $smsMsg);
+        @sendSMS($user['phone'], $smsMsg);
     }
     
+    // Clear any output buffer and send JSON response
+    if (ob_get_level()) ob_clean();
+    header('Content-Type: application/json');
     echo json_encode(['status' => 'success', 'message' => 'Cash payment recorded successfully', 'receipt' => $receiptRef]);
     exit;
 }
@@ -379,6 +417,11 @@ $payload = [
     'TransactionDesc'   => ucfirst($paymentType) . ' Fee Payment'
 ];
 
+// Debug: log full STK Push request
+error_log("M-Pesa STK Push Request: " . json_encode($payload, JSON_PRETTY_PRINT));
+error_log("M-Pesa STK Push URL: $stkPushUrl");
+error_log("M-Pesa Access Token (first 20 chars): " . substr($accessToken, 0, 20) . '...');
+
 // ---------------------------------------------------------------------
 // 7. Execute STK Push Request
 // ---------------------------------------------------------------------
@@ -399,14 +442,25 @@ curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 $response        = curl_exec($ch);
 $responseError   = curl_error($ch);
 $httpStatus      = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+// Debug: log cURL info
+$curlInfo = curl_getinfo($ch);
+error_log("M-Pesa STK Push cURL Info: " . json_encode([
+    'http_code' => $httpStatus,
+    'total_time' => $curlInfo['total_time'] ?? 0,
+    'connect_time' => $curlInfo['connect_time'] ?? 0,
+    'ssl_verify_result' => $curlInfo['ssl_verify_result'] ?? 0,
+]));
+
 curl_close($ch);
 
 if ($response === false) {
+    error_log("M-Pesa STK Push cURL error ($responseError): HTTP $httpStatus");
     mpesaError('Unable to connect to M-Pesa STK Push service.', ['details' => $responseError], 502);
 }
 
-// Debug: log STK response
-error_log("M-Pesa STK Response: HTTP $httpStatus - $response");
+// Debug: log STK Push raw response
+error_log("M-Pesa STK Push Response: HTTP $httpStatus - $response");
 
 $resData = json_decode($response, true);
 if ($httpStatus < 200 || $httpStatus >= 300 || !is_array($resData)) {
@@ -434,6 +488,8 @@ if (isset($resData['ResponseCode']) && $resData['ResponseCode'] === '0' && !empt
         $phoneNumber
     ]);
 
+    if (ob_get_level()) ob_clean();
+    header('Content-Type: application/json');
     echo json_encode([
         'status'            => 'success',
         'message'           => 'STK Push sent to ' . $phoneNumber . '. Please check your phone to complete payment.',

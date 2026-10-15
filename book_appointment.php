@@ -44,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = trim($_POST['description'] ?? '');
     
     // Validation
-    if (empty($full_name) || empty($email) || empty($phone) || empty($case_type) || empty($date) || empty($time)) {
-        $error = 'All fields are required';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (empty($full_name) || empty($phone) || empty($case_type) || empty($date) || empty($time)) {
+        $error = 'All required fields must be filled';
+    } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address';
     } elseif (strtotime($date) < strtotime(date('Y-m-d'))) {
         $error = 'Please select a valid future date';
@@ -62,17 +62,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             // If not logged in, create or find user
             if (!$user_id) {
-                // Check if email exists
-                $existingUser = getRow("SELECT id FROM users WHERE email = ?", [$email]);
+                if (!empty($email)) {
+                    // Check if email exists
+                    $existingUser = getRow("SELECT id FROM users WHERE email = ?", [$email]);
+                    
+                    if ($existingUser) {
+                        $user_id = $existingUser['id'];
+                    }
+                }
                 
-                if ($existingUser) {
-                    $user_id = $existingUser['id'];
-                } else {
+                if (!$user_id) {
                     // Create temporary user (in real app, require registration)
                     $tempPassword = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
                     execute(
                         "INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)",
-                        [$full_name, $email, $phone, $tempPassword]
+                        [$full_name, $email ?: null, $phone, $tempPassword]
                     );
                     $user_id = getLastId();
                 }
@@ -606,11 +610,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         <div class="form-group">
                             <label for="email">
-                                <i class="fas fa-envelope"></i> Email Address
+                                <i class="fas fa-envelope"></i> Email Address <span style="color: var(--gray); font-weight: normal; font-size: 0.85rem;">(Optional)</span>
                             </label>
                             <input type="email" id="email" name="email" 
                                    value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>"
-                                   placeholder="john@example.com" required>
+                                   placeholder="john@example.com">
                         </div>
                     </div>
                     

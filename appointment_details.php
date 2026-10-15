@@ -1,27 +1,23 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 /**
- * Appointment Details View
- * Both admin and clients can view appointment details and take actions
+ * Appointment Details View - Test Version (Bypass Login) + Full PHP Block + HTML Structure
  */
 
 require_once 'db.php';
 
-// Check if user is logged in (admin or client)
-$isAdmin = isset($_SESSION['admin_id']);
-$isClient = isset($_SESSION['user_id']);
-
-if (!$isAdmin && !$isClient) {
-    header('Location: login.php');
-    exit;
-}
+// Bypass login check for testing
+$isAdmin = true;  // Simulate admin logged in
+$isClient = false;
 
 // Check if ID is provided
 if (!isset($_GET['id'])) {
-    $redirect = $isAdmin ? 'manage_appointments.php' : 'client_dashboard.php';
+    $redirect = 'manage_appointments.php'; // dummy
     header('Location: ' . $redirect);
     exit;
 }
-
 $id = (int)$_GET['id'];
 
 // Get appointment with client info
@@ -35,19 +31,18 @@ $appointment = getRow(
 );
 
 if (!$appointment) {
-    $redirect = $isAdmin ? 'manage_appointments.php' : 'client_dashboard.php';
+    $redirect = 'manage_appointments.php'; // dummy
     header('Location: ' . $redirect);
     exit;
 }
 
+// Mark appointment as read when viewed
+if ($appointment['is_read'] == 0) {
+    execute("UPDATE appointments SET is_read = 1 WHERE id = ?", [$id]);
+}
+
 // Get notes
 $notes = $appointment['notes'] ?? '';
-
-// Get documents for this appointment
-$documents = getAllRows(
-    "SELECT * FROM documents WHERE appointment_id = ? ORDER BY uploaded_at DESC",
-    [$id]
-);
 
 // Handle notes update
 $success = '';
@@ -65,6 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_notes'])) {
         $error = 'Failed to update notes. Please try again.';
     }
 }
+
+// Get documents for this appointment
+$documents = getAllRows(
+    "SELECT * FROM documents WHERE appointment_id = ? ORDER BY uploaded_at DESC",
+    [$id]
+);
 
 // Header data based on role
 if ($isAdmin) {
@@ -84,8 +85,8 @@ if ($isAdmin) {
         "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
         [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
     );
-    $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?", [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00'])['count'] ?? 0;
-    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1")['count'] ?? 0;
+    $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
+    $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 } else {
     $user_id = $_SESSION['user_id'];
     $user_name = $_SESSION['user_name'];
@@ -101,7 +102,7 @@ if ($isAdmin) {
         "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND status = 'unread'",
         [$user_id]
     );
-    $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND created_at > ?", [$user_id, $_SESSION['user_last_appointments_view'] ?? '1970-01-01 00:00:00'])['count'] ?? 0;
+    $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND is_read = 0", [$user_id])["count"] ?? 0;
 }
 ?>
 <!DOCTYPE html>
@@ -596,7 +597,7 @@ if ($isAdmin) {
                 justify-content: center;
             }
 
-            .action-buttons {
+            .action-butts {
                 justify-content: center;
             }
         }
@@ -683,6 +684,18 @@ if ($isAdmin) {
                         </span>
                     </div>
                     <div class="detail-item">
+                        <span class="detail-label">Continuation</span>
+                        <span class="detail-value">
+                            <?php if ($appointment['is_continuation']): ?>
+                                <span style="color: var(--accent); font-weight: 600;">
+                                    Yes - <?php echo ucfirst($appointment['status']); ?>
+                                </span>
+                            <?php else: ?>
+                                <span style="color: var(--gray);">No</span>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                    <div class="detail-item">
                         <span class="detail-label">Date & Time</span>
                         <span class="detail-value">
                             <?php echo date('M d, Y', strtotime($appointment['date'])); ?>
@@ -699,7 +712,7 @@ if ($isAdmin) {
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Email</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_email']); ?></span>
+                        <span class="detail-value"><?php echo htmlspecialchars($appointment[.client_email.] ?? ); ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Phone</span>
@@ -738,6 +751,7 @@ if ($isAdmin) {
             </div>
         </div>
 
+        <!-- Case Notes Card -->
         <!-- Case Notes Card -->
         <div class="card">
             <div class="card-header">
@@ -785,197 +799,3 @@ if ($isAdmin) {
             </div>
         </div>
 
-        <!-- Documents Card -->
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-file-alt"></i> Uploaded Documents</h2>
-            </div>
-            <div class="card-body">
-                <!-- Upload Form -->
-                <div class="upload-section" style="background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 1.5rem;">
-                    <h3 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-cloud-upload-alt"></i> Upload New Document</h3>
-                    <form method="POST" action="" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
-                        <input type="hidden" name="appointment_id" value="<?php echo (int)$appointment['id']; ?>">
-                        <div class="form-group" style="flex: 1; min-width: 250px;">
-                            <label for="document" style="display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">Select File (PDF, DOC, DOCX, TXT, JPG, PNG, GIF)</label>
-                            <input type="file" id="document" name="document" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required style="width: 100%; padding: 0.8rem; border: 2px solid var(--light-gray); border-radius: 8px;">
-                        </div>
-                        <button type="submit" name="upload_document" class="btn btn-primary" style="padding: 0.7rem 1.5rem; border-radius: 5px; font-weight: 600; transition: 0.3s; border: none; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: var(--accent); color: var(--primary);">
-                            <i class="fas fa-upload"></i> Upload
-                        </button>
-                    </form>
-                </div>
-
-                <?php
-                // Handle document upload
-                if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['document']) && isset($_POST['upload_document'])) {
-                    $file = $_FILES['document'];
-                    $appointment_id = (int)$appointment['id'];
-                    
-                    if ($file['error'] === UPLOAD_ERR_OK) {
-                        $allowedTypes = [
-                            'application/pdf',
-                            'application/msword',
-                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                            'text/plain',
-                            'image/jpeg',
-                            'image/png',
-                            'image/gif'
-                        ];
-                        $allowedExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
-                        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                        
-                        $typeValid = in_array($file['type'], $allowedTypes);
-                        $extValid = in_array($fileExtension, $allowedExtensions);
-                        
-                        if ($typeValid || $extValid) {
-                            $uploadDir = 'uploads/';
-                            if (!is_dir($uploadDir)) {
-                                mkdir($uploadDir, 0755, true);
-                            }
-                            
-                            $fileName = basename($file['name']);
-                            $filePath = $uploadDir . time() . '_' . $fileName;
-                            
-                            if (move_uploaded_file($file['tmp_name'], $filePath)) {
-                                $storedType = $typeValid ? $file['type'] : mime_content_type($filePath);
-                                execute(
-                                    "INSERT INTO documents (user_id, appointment_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?, ?)",
-                                    [$appointment['user_id'], $appointment_id, $fileName, $filePath, $storedType]
-                                );
-                                // Refresh to show the new document
-                                header("Location: appointment_details.php?id={$appointment_id}&uploaded=1");
-                                exit;
-                            } else {
-                                $docUploadError = 'Failed to upload document. Check directory permissions.';
-                            }
-                        } else {
-                            $docUploadError = 'Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, GIF.';
-                        }
-                    } else {
-                        $docUploadError = 'Error uploading file. Code: ' . $file['error'];
-                    }
-                }
-                ?>
-
-                <?php if (isset($docUploadError)): ?>
-                    <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <?php echo $docUploadError; ?></div>
-                <?php endif; ?>
-                <?php if (isset($_GET['uploaded'])): ?>
-                    <div class="alert alert-success"><i class="fas fa-check-circle"></i> Document uploaded successfully!</div>
-                <?php endif; ?>
-
-                <?php if(!empty($documents)): ?>
-                    <div class="table-container">
-                        <table class="documents-table">
-                            <thead>
-                                <tr>
-                                    <th>Document</th>
-                                    <th>Type</th>
-                                    <th>Uploaded</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($documents as $doc): ?>
-                                    <tr>
-                                        <td>
-                                            <div class="document-info" style="display: flex; align-items: center; gap: 1rem;">
-                                                <?php if (strpos($doc['file_type'], 'image/') === 0): ?>
-                                                    <div class="doc-icon" style="background: #e8f5e9; width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                                        <img src="<?php echo htmlspecialchars($doc['file_path']); ?>" alt="<?php echo htmlspecialchars($doc['file_name']); ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="doc-icon" style="width: 45px; height: 45px; background: rgba(212, 175, 55, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2rem;">
-                                                        <i class="fas fa-file-<?php echo strpos($doc['file_type'], 'pdf') !== false ? 'pdf' : 'word'; ?>"></i>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <div>
-                                                    <strong><?php echo htmlspecialchars($doc['file_name']); ?></strong>
-                                                    <div class="document-date" style="color: var(--gray); font-size: 0.85rem;"><?php echo date('M d, Y h:i A', strtotime($doc['uploaded_at'])); ?></div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td><?php echo strtoupper(pathinfo($doc['file_name'], PATHINFO_EXTENSION)); ?></td>
-                                        <td><?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?></td>
-                                        <td>
-                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-view" download title="Download" style="background: var(--light-gray); color: var(--primary); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" class="btn-icon btn-info" target="_blank" title="View" style="background: var(--light-gray); color: var(--primary); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <?php if ($isAdmin): ?>
-                                            <a href="delete_document.php?id=<?php echo $doc['id']; ?>&redirect=<?php echo urlencode("appointment_details.php?id={$appointment['id']}"); ?>" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Delete this document?');" style="background: rgba(229, 62, 62, 0.1); color: var(--danger); border: none; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.3s ease;">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="no-notes" style="text-align: center; padding: 2rem; color: var(--gray);">No documents uploaded for this appointment.</div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Related Actions Card -->
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-tasks"></i> Related Actions</h2>
-            </div>
-            <div class="card-body">
-                <div class="action-buttons" style="gap: 1rem;">
-                    <?php if ($isAdmin): ?>
-                        <a href="continue_case.php?id=<?php echo $appointment['id']; ?>" class="btn btn-success">
-                            <i class="fas fa-gavel"></i> Continue with Case
-                        </a>
-                        <a href="edit_appointment.php?id=<?php echo $appointment['id']; ?>" class="btn btn-primary">
-                            <i class="fas fa-edit"></i> Edit Appointment Details
-                        </a>
-                        <a href="appointment_notes.php?id=<?php echo $appointment['id']; ?>" class="btn btn-info">
-                            <i class="fas fa-clipboard-edit"></i> Manage Notes (Dedicated)
-                        </a>
-                        <a href="admin_schedule.php" class="btn btn-secondary">
-                            <i class="fas fa-calendar-plus"></i> Schedule Follow-up
-                        </a>
-                        <a href="manage_clients.php" class="btn btn-outline">
-                            <i class="fas fa-user"></i> View Client Profile
-                        </a>
-                        <a href="manage_appointments.php" class="btn btn-outline">
-                            <i class="fas fa-arrow-left"></i> Back to Appointments
-                        </a>
-                    <?php else: ?>
-                        <a href="continue_case.php?id=<?php echo $appointment['id']; ?>" class="btn btn-success">
-                            <i class="fas fa-gavel"></i> Continue with Case
-                        </a>
-                        <a href="client_appointments.php" class="btn btn-outline">
-                            <i class="fas fa-arrow-left"></i> Back to My Appointments
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-                    </a>
-                    <a href="manage_clients.php" class="btn btn-outline">
-                        <i class="fas fa-user"></i> View Client Profile
-                    </a>
-                    <a href="manage_appointments.php" class="btn btn-outline">
-                        <i class="fas fa-arrow-left"></i> Back to Appointments
-                    </a>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // Mobile sidebar toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-        }
-    </script>
-</body>
-</html>

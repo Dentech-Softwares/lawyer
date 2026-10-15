@@ -1,4 +1,11 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Payment constant
+define('CONTINUATION_FEE', 250);
+
 require_once 'db.php';
 
 // Check if client is logged in
@@ -40,7 +47,7 @@ $appointment = getRow(
      FROM appointments a 
      JOIN users u ON a.user_id = u.id 
      WHERE a.id = ? AND a.user_id = ? 
-     AND a.status IN ('approved', 'completed')",
+     AND (a.status IN ('approved', 'completed') OR (a.is_continuation = 1 AND a.original_appointment_id IS NOT NULL))",
     [$id, $user_id]
 );
 
@@ -111,23 +118,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (isset($_POST['continue_case_request'])) {
-        // Store appointment ID in session for payment
-        $_SESSION['continue_appointment_id'] = $id;
-
-        // Set appointment status to pending for rescheduling
-        execute("UPDATE appointments SET status = 'pending' WHERE id = ?", [$id]);
-
-        $admin = getRow("SELECT id FROM admin_users LIMIT 1");
-        if ($admin) {
-            execute(
-                "INSERT INTO notifications (user_id, message, status) VALUES (?, ?, 'unread')",
-                [$admin['id'], 'Client ' . $appointment['client_name'] . ' requested to continue case #' . $id . ' (' . $appointment['case_type'] . ') - please schedule an appointment']
-            );
+        // Get original appointment's completed payment to calculate 50% fee
+        $originalPayment = getRow(
+            "SELECT amount FROM payments WHERE appointment_id = ? AND status = 'COMPLETED' ORDER BY created_at DESC LIMIT 1",
+            [$id]
+        );
+        $continuationFee = CONTINUATION_FEE; // fallback
+        if ($originalPayment && $originalPayment['amount'] > 0) {
+            $continuationFee = round($originalPayment['amount'] * 0.5, 2);
         }
 
-        $_SESSION['success'] = 'Case continuation request sent to admin. They will schedule your appointment soon.';
-        header("Location: continue_case.php?id=" . $id);
-        exit;
+        // Create NEW continuation appointment linked to original
+        $result = execute(
+            "INSERT INTO appointments (user_id, case_type, date, time, message, status, is_continuation, original_appointment_id) 
+             VALUES (?, ?, NULL, NULL, ?, 'pending', 1, ?)",
+            [$appointment['user_id'], $appointment['case_type'], 'Continuation requested for case #' . $id, $id]
+        );
+
+        if ($result) {
+            $newAppointmentId = getLastId();
+
+            // Store continuation fee in session for payment
+            $_SESSION['continue_appointment_id'] = $newAppointmentId;
+            $_SESSION['continuation_fee'] = $continuationFee;
+            $_SESSION['original_appointment_id'] = $id;
+
+            $admin = getRow("SELECT id FROM admin_users LIMIT 1");
+            if ($admin) {
+                execute(
+                    "INSERT INTO notifications (user_id, message, status) VALUES (?, ?, 'unread')",
+                    [$admin['id'], 'Client ' . $appointment['client_name'] . ' requested to continue case #' . $id . ' (' . $appointment['case_type'] . ') - please schedule appointment #' . $newAppointmentId]
+                );
+            }
+
+            $_SESSION['success'] = 'Case continuation request sent to admin. They will schedule your appointment soon. The continuation fee is KSh ' . number_format($continuationFee) . ' (50% of original).';
+            header("Location: continue_case.php?id=" . $newAppointmentId);
+            exit;
+        } else {
+            $_SESSION['error'] = 'Failed to create continuation request. Please try again.';
+            header("Location: continue_case.php?id=" . $id);
+            exit;
+        }
     }
 }
 
@@ -140,8 +171,15 @@ $message = $flashSuccess ?: $flashError;
 $success = $message;
 $error = '';
 
-// Payment constants
-define('CONTINUATION_FEE', 250);
+// Calculate continuation fee (50% of original appointment payment)
+$continuationFee = CONTINUATION_FEE; // fallback
+$originalPayment = getRow(
+    "SELECT amount FROM payments WHERE appointment_id = ? AND status = 'COMPLETED' ORDER BY created_at DESC LIMIT 1",
+    [$id]
+);
+if ($originalPayment && $originalPayment['amount'] > 0) {
+    $continuationFee = round($originalPayment['amount'] * 0.5, 2);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -780,7 +818,13 @@ define('CONTINUATION_FEE', 250);
             <div class="booking-header">
                 <i class="fas fa-gavel"></i>
                 <h1>Case #<?php echo $appointment['id']; ?> - Continue Case</h1>
-                <p><?php echo htmlspecialchars($appointment['case_type']); ?> | <?php echo date('M d, Y', strtotime($appointment['date'])); ?> at <?php echo date('h:i A', strtotime($appointment['time'])); ?></p>
+                <p><?php echo htmlspecialchars($appointment['case_type']); ?> | 
+                    <?php if ($appointment['date'] && $appointment['time']): ?>
+                        <?php echo date('M d, Y', strtotime($appointment['date'])); ?> at <?php echo date('h:i A', strtotime($appointment['time'])); ?>
+                    <?php else: ?>
+                        Not scheduled yet
+                    <?php endif; ?>
+                </p>
             </div>
 
             <div class="booking-body">
@@ -802,29 +846,50 @@ define('CONTINUATION_FEE', 250);
                         <span class="detail-label">Case Type</span>
                         <span class="detail-value"><?php echo htmlspecialchars($appointment['case_type']); ?></span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Status</span>
-                        <span class="detail-value">
-                            <span class="status-badge <?php echo $appointment['status']; ?>">
-                                <?php echo ucfirst($appointment['status']); ?>
-                            </span>
-                        </span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Date & Time</span>
-                        <span class="detail-value">
-                            <?php echo date('M d, Y', strtotime($appointment['date'])); ?>
-                            <small><?php echo date('h:i A', strtotime($appointment['time'])); ?></small>
-                        </span>
-                    </div>
+<div class="detail-item">
+                         <span class="detail-label">Status</span>
+                         <span class="detail-value">
+                             <span class="status-badge <?php echo $appointment['status']; ?>">
+                                 <?php echo ucfirst($appointment['status']); ?>
+                             </span>
+<?php if ($appointment['is_continuation']): ?>
+                                  <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent); margin-left: 0.5rem;">
+                                      <i class="fas fa-sync-alt"></i> <?php echo ucfirst($appointment['status']); ?>
+                                  </span>
+                              <?php endif; ?>
+                         </span>
+                     </div>
+<div class="detail-item">
+                          <span class="detail-label">Continuation</span>
+                          <span class="detail-value">
+                              <?php if ($appointment['is_continuation']): ?>
+                                  <span style="color: var(--accent); font-weight: 600;">
+                                      Yes - <?php echo ucfirst($appointment['status']); ?>
+                                  </span>
+                              <?php else: ?>
+                                  <span style="color: var(--gray);">No</span>
+                              <?php endif; ?>
+                          </span>
+                      </div>
+<div class="detail-item">
+                         <span class="detail-label">Date & Time</span>
+                         <span class="detail-value">
+                             <?php if ($appointment['date'] && $appointment['time']): ?>
+                                 <?php echo date('M d, Y', strtotime($appointment['date'])); ?>
+                                 <small><?php echo date('h:i A', strtotime($appointment['time'])); ?></small>
+                             <?php else: ?>
+                                 <span style="color: var(--gray);">Not scheduled yet</span>
+                             <?php endif; ?>
+                         </span>
+                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Name</span>
                         <span class="detail-value"><?php echo htmlspecialchars($appointment['client_name']); ?></span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Client Email</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($appointment['client_email']); ?></span>
-                    </div>
+<div class="detail-item">
+                         <span class="detail-label">Client Email</span>
+                         <span class="detail-value"><?php echo htmlspecialchars($appointment['client_email'] ?? ''); ?></span>
+                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Phone</span>
                         <span class="detail-value"><?php echo htmlspecialchars($appointment['client_phone'] ?? ''); ?></span>
@@ -833,81 +898,82 @@ define('CONTINUATION_FEE', 250);
                         <span class="detail-label">Client Message</span>
                         <span class="detail-value"><?php echo nl2br(htmlspecialchars($appointment['message'] ?? '')); ?></span>
                     </div>
+</div>
+
+                <!-- Payment Section - Always visible for continuation appointments -->
+                <div class="payment-section" style="background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; border: 2px dashed var(--accent);">
+                    <h3 style="color: var(--primary); margin-bottom: 0.75rem; font-size: 1.1rem;">
+                        <i class="fas fa-mobile-alt"></i> Complete Your Payment
+                    </h3>
+                    <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
+                        Continuation fee: <strong>KSh <?php echo number_format($continuationFee); ?></strong> (50% of original appointment fee)
+                    </p>
+                    
+                    <!-- Payment Method Selector -->
+                    <div class="payment-method-selector" style="margin-bottom: 1rem; text-align: left;">
+                        <label style="display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-money-bill-wave"></i> Payment Method
+                        </label>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('mpesa', this)">
+                                <input type="radio" name="payment_method" value="mpesa" id="method_mpesa" checked style="display: none;">
+                                <i class="fas fa-mobile-alt" style="color: var(--accent); font-size: 1.2rem;"></i>
+                                <span style="font-weight: 500;">M-Pesa</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('cash', this)">
+                                <input type="radio" name="payment_method" value="cash" id="method_cash" style="display: none;">
+                                <i class="fas fa-money-bill" style="color: var(--success); font-size: 1.2rem;"></i>
+                                <span style="font-weight: 500;">Cash</span>
+                            </label>
+                        </div>
+                        <input type="hidden" id="selected_payment_method" name="payment_method" value="mpesa">
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+                        <button class="submit-btn" id="payNowBtn" style="max-width: 300px;">
+                            <i class="fas fa-money-bill-wave"></i> Pay Now
+                        </button>
+                        
+                        <?php if ($appointment['status'] !== 'completed'): ?>
+                        <form method="POST" action="" style="display: inline;">
+                            <button type="submit" name="continue_case_request" class="btn btn-primary" onclick="return confirm('This will send a request to the admin to schedule your next appointment. Continue?');">
+                                <i class="fas fa-gavel"></i> Continue Case
+                            </button>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+                    <div style="background:var(--white); border-radius:20px; padding:2rem; max-width:450px; width:90%; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                        <div style="text-align:center; margin-bottom:1.5rem;">
+                            <i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i>
+                            <h3 style="color:var(--primary);">M-Pesa STK Push Payment</h3>
+                            <p style="color:var(--gray); font-size:0.9rem;">Enter your M-Pesa number to pay KSh <?php echo number_format($continuationFee); ?></p>
+                        </div>
+                        <div class="form-group" style="margin-bottom:1.5rem;">
+                            <label for="mpesaPhone" style="display:block; color:var(--primary); font-weight:600; margin-bottom:0.5rem;">
+                                <i class="fas fa-phone"></i> M-Pesa Phone Number
+                            </label>
+                            <input type="tel" id="mpesaPhone" placeholder="2547XXXXXXXX"
+                                   style="width:100%; padding:0.8rem; border:2px solid var(--light-gray); border-radius:8px; font-size:1rem; text-align:center;">
+                        </div>
+                        <div id="paymentStatus" style="display:none; text-align:center; padding:1rem; margin-bottom:1rem; border-radius:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7;"></div>
+                        <div style="display:flex; gap:1rem;">
+                            <button class="btn btn-back" id="cancelPayment" style="flex:1;">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button class="btn btn-primary" id="confirmPayment" style="flex:1;">
+                                <i class="fas fa-check"></i> Pay
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Action Footer -->
                 <div class="action-footer">
-                    <?php if($success && strpos($success, 'continuation request sent') !== false): ?>
-                        <div class="payment-section" style="background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; border: 2px dashed var(--accent);">
-                            <h3 style="color: var(--primary); margin-bottom: 0.75rem; font-size: 1.1rem;">
-                                <i class="fas fa-mobile-alt"></i> Complete Your Payment
-                            </h3>
-                            <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
-                                Continuation fee: <strong>KSh <?php echo number_format(CONTINUATION_FEE); ?></strong>
-                            </p>
-                            
-                            <!-- Payment Method Selector -->
-                            <div class="payment-method-selector" style="margin-bottom: 1rem; text-align: left;">
-                                <label style="display: block; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">
-                                    <i class="fas fa-money-bill-wave"></i> Payment Method
-                                </label>
-                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('mpesa', this)">
-                                        <input type="radio" name="payment_method" value="mpesa" id="method_mpesa" checked style="display: none;">
-                                        <i class="fas fa-mobile-alt" style="color: var(--accent); font-size: 1.2rem;"></i>
-                                        <span style="font-weight: 500;">M-Pesa</span>
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; transition: all 0.3s; background: var(--white);" onclick="selectPaymentMethod('cash', this)">
-                                        <input type="radio" name="payment_method" value="cash" id="method_cash" style="display: none;">
-                                        <i class="fas fa-money-bill" style="color: var(--success); font-size: 1.2rem;"></i>
-                                        <span style="font-weight: 500;">Cash</span>
-                                    </label>
-                                </div>
-                                <input type="hidden" id="selected_payment_method" name="payment_method" value="mpesa">
-                            </div>
-                            
-                            <button class="submit-btn" id="payNowBtn" style="max-width: 300px; margin: 0 auto;">
-                                <i class="fas fa-money-bill-wave"></i> Pay Now
-                            </button>
-                        </div>
-
-                        <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
-                            <div style="background:var(--white); border-radius:20px; padding:2rem; max-width:450px; width:90%; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                                <div style="text-align:center; margin-bottom:1.5rem;">
-                                    <i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i>
-                                    <h3 style="color:var(--primary);">M-Pesa STK Push Payment</h3>
-                                    <p style="color:var(--gray); font-size:0.9rem;">Enter your M-Pesa number to pay KSh <?php echo number_format(CONTINUATION_FEE); ?></p>
-                                </div>
-                                <div class="form-group" style="margin-bottom:1.5rem;">
-                                    <label for="mpesaPhone" style="display:block; color:var(--primary); font-weight:600; margin-bottom:0.5rem;">
-                                        <i class="fas fa-phone"></i> M-Pesa Phone Number
-                                    </label>
-                                    <input type="tel" id="mpesaPhone" placeholder="2547XXXXXXXX"
-                                           style="width:100%; padding:0.8rem; border:2px solid var(--light-gray); border-radius:8px; font-size:1rem; text-align:center;">
-                                </div>
-                                <div id="paymentStatus" style="display:none; text-align:center; padding:1rem; margin-bottom:1rem; border-radius:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7;"></div>
-                                <div style="display:flex; gap:1rem;">
-                                    <button class="btn btn-back" id="cancelPayment" style="flex:1;">
-                                        <i class="fas fa-times"></i> Cancel
-                                    </button>
-                                    <button class="btn btn-primary" id="confirmPayment" style="flex:1;">
-                                        <i class="fas fa-check"></i> Pay
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-
-                    <form method="POST" action="" style="display: inline;">
-                        <button type="submit" name="continue_case_request" class="btn btn-primary" onclick="return confirm('This will send a request to the admin to schedule your next appointment. Continue?');">
-                            <i class="fas fa-gavel"></i> Continue Case
-                        </button>
-                    </form>
                     <a href="print_appointment.php?id=<?php echo $appointment['id']; ?>" class="btn btn-print" target="_blank" title="Print case details">
                         <i class="fas fa-print"></i> Print Details
-                    </a>
-                    <a href="client_dashboard.php" class="btn btn-back" title="Return to dashboard">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
                 </div>
 
@@ -1048,14 +1114,14 @@ define('CONTINUATION_FEE', 250);
                 
                 if (selectedPaymentMethod === 'cash') {
                     modalTitle.innerHTML = '<i class="fas fa-money-bill" style="font-size:2.5rem; color:var(--success); margin-bottom:0.5rem;"></i> Cash Payment';
-                    modalDesc.innerHTML = 'You selected <strong>Cash</strong> payment. Please pay KSh <?php echo number_format(CONTINUATION_FEE); ?> at the office.';
+                    modalDesc.innerHTML = 'You selected <strong>Cash</strong> payment. Please pay KSh <?php echo number_format($continuationFee); ?> at the office.';
                     phoneLabel.innerHTML = '<i class="fas fa-user"></i> Your Name (for receipt)';
                     phoneInput.placeholder = 'Enter your name';
                     phoneInput.type = 'text';
                     phoneInput.style.textAlign = 'left';
                 } else {
                     modalTitle.innerHTML = '<i class="fas fa-mobile-alt" style="font-size:2.5rem; color:var(--accent); margin-bottom:0.5rem;"></i> M-Pesa STK Push Payment';
-                    modalDesc.innerHTML = 'Enter your M-Pesa number to pay KSh <?php echo number_format(CONTINUATION_FEE); ?>';
+                    modalDesc.innerHTML = 'Enter your M-Pesa number to pay KSh <?php echo number_format($continuationFee); ?>';
                     phoneLabel.innerHTML = '<i class="fas fa-phone"></i> M-Pesa Phone Number';
                     phoneInput.placeholder = '2547XXXXXXXX';
                     phoneInput.type = 'tel';
