@@ -372,21 +372,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         }
 
         /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            width: 45px;
-            height: 45px;
-            background: var(--primary);
-            border: none;
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -402,19 +387,57 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
                 margin-left: 0;
             }
 
-            .mobile-menu-btn {
-                display: block;
-            }
         }
 
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 1rem;
+
+            /* Two stat cards per row on small screens */
+            .stats-grid,
+            .stats-cards-container,
+            .row-stats {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
             }
 
-            .stats-grid {
-                grid-template-columns: 1fr;
+            /* Bootstrap style row fallback */
+            .stat-card-col {
+                flex: 0 0 50%;
+                max-width: 50%;
+                padding: 5px;
+            }
+
+            /* Compact card internals so nothing clips on narrow screens */
+            .stat-card {
+                padding: 0.75rem;
+                gap: 8px;
+                align-items: center;
+                /* let the grid shrink the card so both columns stay equal */
+                min-width: 0;
+            }
+
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 9px;
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+
+            .stat-info {
+                min-width: 0;
+            }
+
+            .stat-info h3 {
+                font-size: 0.75rem;
+                line-height: 1.25;
+                /* the label may wrap onto a second line, but never clip */
+                overflow-wrap: break-word;
+            }
+
+            .stat-info p {
+                font-size: 1.3rem;
+                line-height: 1.2;
             }
         }
     </style>

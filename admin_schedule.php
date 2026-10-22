@@ -117,26 +117,8 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
             color: var(--dark);
         }
 
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 2rem;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .header h1 {
-            color: var(--primary);
+        /* Keep the page title large; the shared header styles load later */
+        .header h1.title-large {
             font-size: 1.8rem;
         }
 
@@ -248,21 +230,6 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
             margin-bottom: 1rem;
         }
 
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            width: 45px;
-            height: 45px;
-            background: var(--primary);
-            border: none;
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
 
         @media (max-width: 1024px) {
             .sidebar {
@@ -277,16 +244,9 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
                 margin-left: 0;
             }
 
-            .mobile-menu-btn {
-                display: block;
-            }
         }
 
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
 
             .continuations-table th,
             .continuations-table td {
@@ -307,8 +267,12 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
 
     <!-- Main Content -->
     <main class="main-content">
+        <?php include __DIR__ . '/includes/dashboard_header_styles.php'; ?>
         <div class="header">
-            <h1><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
+            <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 class="title-large"><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
         </div>
 
         <?php if($success): ?>

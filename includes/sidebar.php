@@ -5,13 +5,23 @@
  * Requires: $sidebar_role = 'admin' | 'client' (set before include)
  *           $current_page = basename($_SERVER['SCRIPT_NAME']) (optional, auto-detected)
  *           $sidebar_badges = ['page_name' => count, ...] (optional, notification counts)
+ *
+ * This file is the single source of truth for the portal sidebar markup.
+ * Client pages must include 'includes/client_sidebar.php', which delegates
+ * here with the client role already applied.
  */
 
 require_once __DIR__ . '/helpers.php';
 
 $sidebar_role = $sidebar_role ?? 'client';
-$current_page = $current_page ?? basename($_SERVER['SCRIPT_NAME']);
 $sidebar_badges = $sidebar_badges ?? [];
+
+// Resolve the active page from the script name (query string stripped) so the
+// highlight is identical no matter which page includes the component.
+if (!isset($current_page) || $current_page === '') {
+    $script_path = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH);
+    $current_page = basename($script_path ?: '');
+}
 
 $admin_nav = [
     ['key' => 'dashboard',       'href' => 'admin_dashboard.php',       'icon' => 'fa-home',         'label' => 'Dashboard'],
@@ -38,11 +48,6 @@ $user_initials = get_current_user_initials();
 $user_role_label = get_current_user_role();
 ?>
 
-<!-- Mobile Menu Button -->
-<button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
-    <i class="fas fa-bars"></i>
-</button>
-
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
@@ -64,7 +69,7 @@ $user_role_label = get_current_user_role();
             $badge_count = $sidebar_badges[$item['key']] ?? 0;
             ?>
             <li>
-                <a href="<?php echo htmlspecialchars($item['href']); ?>" class="<?php echo $is_active ? 'active' : ''; ?>">
+                <a href="<?php echo htmlspecialchars($item['href']); ?>" class="nav-link<?php echo $is_active ? ' active' : ''; ?>"<?php echo $is_active ? ' aria-current="page"' : ''; ?>>
                     <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
                     <?php echo htmlspecialchars($item['label']); ?>
                     <?php if ($badge_count > 0): ?>
@@ -75,3 +80,19 @@ $user_role_label = get_current_user_role();
         <?php endforeach; ?>
     </ul>
 </aside>
+
+<script>
+    /*
+     * Shared sidebar behaviour. Guarded so a page that already defines
+     * toggleSidebar() keeps its own implementation without a redeclaration
+     * clash, and so the sidebar behaves identically on every page.
+     */
+    if (typeof window.toggleSidebar !== 'function') {
+        window.toggleSidebar = function () {
+            var sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('active');
+            }
+        };
+    }
+</script>

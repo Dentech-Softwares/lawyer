@@ -61,9 +61,6 @@ $unreadNotifications = getRow(
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--light-gray); color: var(--dark); }
 
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .header h1 { color: var(--primary); font-size: 1.8rem; }
         .logout-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: var(--danger); color: var(--white); text-decoration: none; border-radius: 8px; transition: 0.3s; }
         .logout-btn:hover { background: #c53030; }
 
@@ -128,22 +125,72 @@ $unreadNotifications = getRow(
         .empty-state { text-align: center; padding: 4rem; color: var(--gray); }
         .empty-state i { font-size: 4rem; color: var(--light-gray); margin-bottom: 1rem; }
 
-        .mobile-menu-btn { display: none; }
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .mobile-menu-btn { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 1001; width: 45px; height: 45px; background: var(--primary); border: none; border-radius: 8px; color: var(--white); font-size: 1.2rem; cursor: pointer; }
+        @media (max-width: 768px) {
+            /* Two stat cards per row on small screens */
+            .stats-grid,
+            .stats-cards-container,
+            .row-stats {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            /* Bootstrap style row fallback */
+            .stat-card-col {
+                flex: 0 0 50%;
+                max-width: 50%;
+                padding: 5px;
+            }
+
+            /* Compact card internals so nothing clips on narrow screens */
+            .stat-card {
+                padding: 0.75rem;
+                gap: 8px;
+                align-items: center;
+                /* let the grid shrink the card so both columns stay equal */
+                min-width: 0;
+            }
+
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 9px;
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+
+            .stat-info {
+                min-width: 0;
+            }
+
+            .stat-info h3 {
+                font-size: 0.75rem;
+                line-height: 1.25;
+                /* the label may wrap onto a second line, but never clip */
+                overflow-wrap: break-word;
+            }
+
+            .stat-info p {
+                font-size: 1.3rem;
+                line-height: 1.2;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
         }
     </style>
 </head>
 <body>
     <?php
-    $sidebar_role = 'client';
     $sidebar_badges = [
         'appointments' => $userPendingCount,
     ];
-    include 'includes/sidebar.php';
+    include 'includes/client_sidebar.php';
     ?>
 
     <main class="main-content">
@@ -208,6 +255,5 @@ $unreadNotifications = getRow(
             </div>
         </div>
     </main>
-    <script>function toggleSidebar(){document.getElementById('sidebar').classList.toggle('active');}</script>
 </body>
 </html>

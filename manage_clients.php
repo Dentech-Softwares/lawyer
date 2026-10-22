@@ -72,21 +72,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             color: var(--dark);
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
 
-        .header h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
-        }
 
         .header-actions {
             display: flex;
@@ -286,9 +272,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         }
 
         /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: none;
-        }
 
         @media (max-width: 1024px) {
             .sidebar {
@@ -299,21 +282,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             }
             .main-content {
                 margin-left: 0;
-            }
-            .mobile-menu-btn {
-                display: block;
-                position: fixed;
-                top: 1rem;
-                left: 1rem;
-                z-index: 1001;
-                width: 45px;
-                height: 45px;
-                background: var(--primary);
-                border: none;
-                border-radius: 8px;
-                color: var(--white);
-                font-size: 1.2rem;
-                cursor: pointer;
             }
         }
     </style>

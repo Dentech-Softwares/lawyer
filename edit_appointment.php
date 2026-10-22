@@ -147,31 +147,10 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
             color: var(--dark);
         }
 
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 2rem;
-        }
+        /* Main Content Area is styled by assets/css/sidebar.css */
 
         /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
 
-        .header h1 {
-            color: var(--primary);
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
 
         .header-actions {
             display: flex;
@@ -406,21 +385,6 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
         }
 
         /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            width: 45px;
-            height: 45px;
-            background: var(--primary);
-            border: none;
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -436,16 +400,9 @@ $pendingAppointmentsCount = $unreadAdminNotifications['count'] ?? 0;
                 margin-left: 0;
             }
 
-            .mobile-menu-btn {
-                display: block;
-            }
         }
 
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
 
             .form-row {
                 grid-template-columns: 1fr;

@@ -118,9 +118,6 @@ $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE use
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--light-gray); color: var(--dark); }
 
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .header h1 { color: var(--primary); font-size: 1.8rem; }
         .logout-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: var(--danger); color: var(--white); text-decoration: none; border-radius: 8px; }
 
         .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; display: flex; align-items: center; gap: 0.8rem; }
@@ -159,23 +156,17 @@ $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE use
         .empty-state { text-align: center; padding: 4rem; color: var(--gray); }
         .empty-state i { font-size: 4rem; color: var(--light-gray); margin-bottom: 1rem; }
 
-        .mobile-menu-btn { display: none; }
         @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .mobile-menu-btn { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 1001; width: 45px; height: 45px; background: var(--primary); border: none; border-radius: 8px; color: var(--white); font-size: 1.2rem; cursor: pointer; }
             .upload-form { flex-direction: column; }
         }
     </style>
 </head>
 <body>
     <?php
-    $sidebar_role = 'client';
     $sidebar_badges = [
         'appointments' => $userPendingCount,
     ];
-    include 'includes/sidebar.php';
+    include 'includes/client_sidebar.php';
     ?>
 
     <main class="main-content">
@@ -248,6 +239,5 @@ $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE use
             </div>
         </div>
     </main>
-    <script>function toggleSidebar(){document.getElementById('sidebar').classList.toggle('active');}</script>
 </body>
 </html>

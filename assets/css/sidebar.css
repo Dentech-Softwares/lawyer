@@ -14,11 +14,21 @@
     --sidebar-accent: #d4af37;
     --sidebar-active-border: #d4af37;
     --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+    --sidebar-active-bg: rgba(212, 175, 55, 0.16);
     --avatar-size: 60px;
     --avatar-border: 3px solid var(--sidebar-accent);
     --logo-gap: 0.75rem;
     --nav-gap: 0.875rem;
-    --nav-padding: 0.875rem 1rem;
+    --nav-padding-y: 0.875rem;
+    --nav-padding-x: 1rem;
+    --nav-padding: var(--nav-padding-y) var(--nav-padding-x);
+    --nav-font-size: 0.95rem;
+    --nav-font-weight: 500;
+    --nav-line-height: 1.5;
+    --nav-icon-size: 1rem;
+    --nav-icon-width: 20px;
+    --nav-active-border-width: 3px;
+    --sidebar-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Sidebar Base */
@@ -37,6 +47,18 @@
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease;
+    /*
+     * Typography lock: the sidebar declares its own font stack, size and
+     * line-height so it can never inherit a page-specific value. Every page
+     * that renders the sidebar therefore measures the nav identically and
+     * switching between them produces zero font or spacing jitter.
+     */
+    font-family: var(--sidebar-font-family);
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-align: left;
 }
 
 /* Sidebar Brand/Logo */
@@ -58,11 +80,14 @@
     gap: var(--logo-gap);
     margin: 0;
     line-height: 1.2;
+    font-family: var(--sidebar-font-family);
+    letter-spacing: normal;
 }
 
 .sidebar-brand h2 i {
     color: var(--sidebar-accent);
     font-size: 1.5rem;
+    line-height: 1.2;
 }
 
 /* Sidebar Profile (Admin & Client unified) */
@@ -102,6 +127,8 @@
     font-size: 1rem;
     font-weight: 600;
     margin: 0 0 0.25rem;
+    line-height: 1.3;
+    font-family: var(--sidebar-font-family);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -111,6 +138,8 @@
     color: rgba(255, 255, 255, 0.7);
     font-size: 0.8125rem;
     margin: 0;
+    line-height: 1.3;
+    font-family: var(--sidebar-font-family);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -129,6 +158,11 @@
     margin-bottom: 0.375rem;
 }
 
+/*
+ * Every nav item is measured from the same locked values, so the active item
+ * occupies exactly the same box as an inactive one and nothing shifts when
+ * the highlighted page changes.
+ */
 .sidebar-nav a,
 .sidebar-nav .nav-link {
     display: flex;
@@ -138,11 +172,15 @@
     color: var(--sidebar-text);
     text-decoration: none;
     border-radius: 8px;
-    transition: all 0.25s ease;
-    font-size: 0.95rem;
-    font-weight: 500;
-    line-height: 1.5;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    font-family: var(--sidebar-font-family);
+    font-size: var(--nav-font-size);
+    font-weight: var(--nav-font-weight);
+    line-height: var(--nav-line-height);
+    letter-spacing: normal;
+    text-transform: none;
     white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .sidebar-nav a:hover,
@@ -153,21 +191,34 @@
     color: var(--sidebar-text-hover);
 }
 
+/*
+ * Active state = background + left border highlight only.
+ * The padding is trimmed by exactly the border width so the label keeps the
+ * same x-offset as every other item (no text shift, no reflow, no jitter).
+ * Font size / weight / line-height are restated unchanged on purpose.
+ */
 .sidebar-nav a.active,
 .sidebar-nav .nav-link.active {
-    border-left: 3px solid var(--sidebar-active-border);
-    padding-left: calc(var(--nav-padding) - 3px);
+    background: var(--sidebar-active-bg);
+    border-left: var(--nav-active-border-width) solid var(--sidebar-active-border);
+    padding-left: calc(var(--nav-padding-x) - var(--nav-active-border-width));
+    color: var(--sidebar-text-hover);
+    font-size: var(--nav-font-size);
+    font-weight: var(--nav-font-weight);
+    line-height: var(--nav-line-height);
 }
 
 .sidebar-nav a i,
 .sidebar-nav .nav-link i {
-    width: 20px;
-    height: 20px;
+    width: var(--nav-icon-width);
+    height: var(--nav-icon-width);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: var(--nav-icon-size);
+    line-height: 1;
     flex-shrink: 0;
+    margin: 0;
 }
 
 /* Notification Badge */
@@ -179,6 +230,7 @@
     height: 20px;
     padding: 0 6px;
     margin-left: auto;
+    font-family: var(--sidebar-font-family);
     font-size: 0.7rem;
     font-weight: 700;
     color: #ffffff;
@@ -204,26 +256,6 @@
     transition: margin-left 0.3s ease;
 }
 
-/* Mobile Menu Button */
-.mobile-menu-btn {
-    display: none;
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 1001;
-    width: 44px;
-    height: 44px;
-    background: var(--sidebar-bg-start);
-    border: none;
-    border-radius: 8px;
-    color: #ffffff;
-    font-size: 1.25rem;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
 /* Mobile Responsive */
 @media (max-width: 1024px) {
     .sidebar {
@@ -239,16 +271,34 @@
     .main-content {
         margin-left: 0;
     }
+}
 
-    .mobile-menu-btn {
-        display: flex;
+/* Mobile: content spans the full width with a clean edge gutter */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    /* Wrappers must not squeeze the content into a narrow centred column */
+    .container,
+    .container-fluid,
+    .page-content,
+    .notes-container {
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
     }
 }
 
 /* Print Styles */
 @media print {
-    .sidebar,
-    .mobile-menu-btn {
+    .sidebar {
         display: none !important;
     }
 

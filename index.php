@@ -62,6 +62,8 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
+            flex-wrap: nowrap;
         }
 
         .logo {
@@ -71,10 +73,20 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             display: flex;
             align-items: center;
             gap: 10px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .logo i {
             color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* Right-hand cluster: nav links + auth actions (desktop) */
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
         }
 
         .nav-links {
@@ -316,7 +328,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
 
         .services-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
             gap: 2rem;
         }
 
@@ -390,7 +402,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
 
         .why-us-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
             gap: 2rem;
         }
 
@@ -446,7 +458,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
 
         .testimonial-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
             gap: 2rem;
         }
 
@@ -531,7 +543,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
 
         .footer-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
             gap: 3rem;
             margin-bottom: 3rem;
         }
@@ -614,31 +626,147 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
         /* Mobile Menu */
         .mobile-menu-btn {
             display: none;
+            width: 42px;
+            height: 42px;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 10px;
             color: var(--white);
-            font-size: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1;
             cursor: pointer;
+            flex-shrink: 0;
+            transition: background-color 0.25s ease, transform 0.25s ease;
+        }
+
+        .mobile-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        /* Keep the desktop bar comfortable on narrow tablets */
+        @media (max-width: 960px) and (min-width: 769px) {
+            .header-container {
+                padding: 0 1.25rem;
+            }
+
+            .navbar-menu {
+                gap: 1.25rem;
+            }
+
+            .nav-links {
+                gap: 1.25rem;
+            }
+
+            .logo {
+                font-size: 1.5rem;
+            }
+
+            .auth-buttons {
+                gap: 0.6rem;
+            }
+
+            .auth-buttons .btn {
+                padding: 0.6rem 1rem;
+            }
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .nav-links {
-                display: none;
+            /* Slim bar: the fixed header drops its own padding, the
+               container supplies it, so the bar is not double-padded. */
+            header {
+                padding: 0;
+            }
+
+            .header-container {
+                padding: 0.5rem 1rem;
+            }
+
+            .navbar {
+                min-height: 40px;
+                height: auto;
+                gap: 0.75rem;
+            }
+
+            /* Brand stays on one inline row, slightly smaller */
+            .logo {
+                font-size: 1.25rem;
+                line-height: 1.2;
+                gap: 8px;
+                white-space: nowrap;
+            }
+
+            .logo i {
+                font-size: 1.1rem;
+                line-height: 1;
+            }
+
+            /* Compact toggle: sized by its padding, not a fixed square */
+            .mobile-menu-btn {
+                display: flex;
+                width: auto;
+                height: auto;
+                padding: 0.35rem 0.6rem;
+                font-size: 1.05rem;
+                border-radius: 8px;
+            }
+
+            /*
+             * Mobile drawer: it holds only the account actions (Login /
+             * Register). The standard page links stay out of the mobile menu
+             * so the dropdown stays compact and never crowds the bar.
+             */
+            .navbar-menu {
                 position: absolute;
                 top: 100%;
                 left: 0;
-                width: 100%;
-                background: var(--primary);
-                flex-direction: column;
-                padding: 2rem;
-                gap: 1rem;
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .mobile-menu-btn {
+                right: 0;
                 display: block;
+                padding: 0.75rem 1rem;
+                background: var(--secondary);
+                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+                max-height: 0;
+                overflow: hidden;
+                opacity: 0;
+                visibility: hidden;
+                transition: max-height 0.3s ease, opacity 0.25s ease, visibility 0.3s ease;
+            }
+
+            .navbar-menu.active {
+                max-height: 14rem;
+                opacity: 1;
+                visibility: visible;
+                overflow-y: auto;
+            }
+
+            /* Standard navigation links are not part of the mobile menu */
+            .nav-links {
+                display: none;
+            }
+
+            .auth-buttons {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+                width: 100%;
+                margin-top: 0;
+            }
+
+            .auth-buttons .btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-height: 3.25rem;
+                text-align: center;
+                padding: 0.75rem 1rem;
+            }
+
+            /* The fixed bar is shorter now, so the hero needs less top room */
+            .hero {
+                padding-top: 80px;
             }
 
             .hero h1 {
@@ -662,29 +790,33 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
     <header>
         <div class="header-container">
             <nav class="navbar">
-            <div class="logo">
-                <i class="fas fa-gavel"></i>
-                <span>Justice Law</span>
-            </div>
-            <ul class="nav-links">
-                <li><a href="index.php">Home</a></li>
-                <li><a href="about.php">About</a></li>
-                <li><a href="services.php">Services</a></li>
-                <li><a href="contact.php">Contact</a></li>
-            </ul>
-            <div class="auth-buttons">
-                <?php if(isset($_SESSION['user_id'])): ?>
-                    <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
-                    <a href="logout.php" class="btn btn-primary">Logout</a>
-                <?php else: ?>
-                    <a href="login.php" class="btn btn-outline">Login</a>
-                    <a href="register.php" class="btn btn-primary">Register</a>
-                <?php endif; ?>
-            </div>
-            <div class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </div>
-        </nav>
+                <div class="logo">
+                    <i class="fas fa-gavel"></i>
+                    <span>Justice Law</span>
+                </div>
+
+                <div class="navbar-menu" id="navbarMenu">
+                    <ul class="nav-links">
+                        <li><a href="index.php">Home</a></li>
+                        <li><a href="about.php">About</a></li>
+                        <li><a href="services.php">Services</a></li>
+                        <li><a href="contact.php">Contact</a></li>
+                    </ul>
+                    <div class="auth-buttons">
+                        <?php if(isset($_SESSION['user_id'])): ?>
+                            <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
+                            <a href="logout.php" class="btn btn-primary">Logout</a>
+                        <?php else: ?>
+                            <a href="login.php" class="btn btn-outline">Login</a>
+                            <a href="register.php" class="btn btn-primary">Register</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <button class="mobile-menu-btn" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navbarMenu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
         </div>
     </header>
 
@@ -885,11 +1017,42 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
     <script>
         // Mobile Menu Toggle
         const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-        const navLinks = document.querySelector('.nav-links');
+        const navbarMenu = document.getElementById('navbarMenu');
 
-        mobileMenuBtn.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
+        if (mobileMenuBtn && navbarMenu) {
+            const setMenuState = (open) => {
+                navbarMenu.classList.toggle('active', open);
+                mobileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                const icon = mobileMenuBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-bars', !open);
+                    icon.classList.toggle('fa-xmark', open);
+                }
+            };
+
+            mobileMenuBtn.addEventListener('click', () => {
+                setMenuState(!navbarMenu.classList.contains('active'));
+            });
+
+            // Close the drawer as soon as a destination is chosen
+            navbarMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => setMenuState(false));
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    setMenuState(false);
+                }
+            });
+
+            // Close when tapping outside the header
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('header')) {
+                    setMenuState(false);
+                }
+            });
+        }
 
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

@@ -33,6 +33,37 @@ if (isset($_SESSION['error'])) {
 // Payment amount constant
 define('BOOKING_FEE', 500);
 
+// Client portal layout: logged-in clients get the same shared sidebar as the
+// other client pages, so the navigation is pixel-identical everywhere.
+$showClientPortal = isset($_SESSION['user_id']);
+$notifications = [];
+$unreadNotifications = ['count' => 0];
+$current_date = date('F j, Y');
+
+if ($showClientPortal) {
+    $user_name = $_SESSION['user_name'] ?? '';
+    $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
+
+    $notifications = getAllRows(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
+        [$user_id]
+    );
+
+    $unreadNotifications = getRow(
+        "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND status = 'unread'",
+        [$user_id]
+    );
+
+    $portalPendingCount = getRow(
+        "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND is_read = 0",
+        [$user_id]
+    )['count'] ?? 0;
+
+    $sidebar_badges = [
+        'appointments' => $portalPendingCount,
+    ];
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
@@ -123,6 +154,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Appointment - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <?php if ($showClientPortal): ?>
+        <link rel="stylesheet" href="assets/css/sidebar.css">
+    <?php endif; ?>
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -149,6 +183,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background: linear-gradient(135deg, var(--light-gray) 0%, #e2e8f0 100%);
             min-height: 100vh;
             padding: 120px 2rem 2rem;
+        }
+
+        /* Client portal layout: the shared sidebar owns the left gutter */
+        body.client-portal {
+            padding: 0;
+        }
+
+        /* The portal wrapper already animates in; avoid a nested animation */
+        body.client-portal .booking-card {
+            animation: none;
         }
 
         /* Header */
@@ -445,7 +489,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         /* Mobile Menu */
-        .mobile-menu-btn {
+        .navbar-toggle-btn {
             display: none;
             color: var(--white);
             font-size: 1.5rem;
@@ -458,12 +502,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 display: none;
             }
 
-            .mobile-menu-btn {
+            .navbar-toggle-btn {
                 display: block;
             }
 
             body {
                 padding: 100px 1rem 2rem;
+            }
+
+            /* Content spans the full width with a clean edge gutter */
+            .booking-container {
+                width: 100%;
+                max-width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+            }
+
+            .header-container {
+                width: 100%;
+                max-width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+                padding-left: 12px;
+                padding-right: 12px;
             }
 
             .form-row {
@@ -484,7 +545,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     </style>
 </head>
-<body>
+<body class="<?php echo $showClientPortal ? 'client-portal' : ''; ?>">
+    <?php if ($showClientPortal): ?>
+        <?php include 'includes/client_sidebar.php'; ?>
+    <?php endif; ?>
+
+    <?php if (!$showClientPortal): ?>
     <!-- Header -->
     <header>
         <div class="header-container">
@@ -508,12 +574,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <a href="register.php" class="btn btn-primary">Register</a>
                     <?php endif; ?>
                 </div>
-                <div class="mobile-menu-btn">
+                <div class="navbar-toggle-btn">
                     <i class="fas fa-bars"></i>
                 </div>
             </nav>
         </div>
     </header>
+    <?php endif; ?>
+
+    <?php if ($showClientPortal): ?>
+    <main class="main-content">
+        <?php include 'client_header.php'; ?>
+    <?php endif; ?>
 
     <!-- Booking Form -->
     <div class="booking-container">
@@ -683,6 +755,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
+    <?php if ($showClientPortal): ?>
+    </main>
+    <?php endif; ?>
+
     <script>
         // Time Slot Selection
         const timeSlots = document.querySelectorAll('.time-slot');
@@ -747,12 +823,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         });
 
         // Mobile menu toggle
-        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileMenuBtn = document.querySelector('.navbar-toggle-btn');
         const navLinks = document.querySelector('.nav-links');
 
-        mobileMenuBtn.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
+        if (mobileMenuBtn && navLinks) {
+            mobileMenuBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+            });
+        }
 
         // Payment Modal Logic
         const payNowBtn = document.getElementById('payNowBtn');

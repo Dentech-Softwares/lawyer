@@ -130,10 +130,8 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--light-gray); color: var(--dark); }
 
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; }
+        /* Main Content Area is styled by assets/css/sidebar.css */
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .header h1 { color: var(--primary); font-size: 1.8rem; }
         .header-actions { display: flex; gap: 1rem; }
         .logout-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: var(--danger); color: var(--white); text-decoration: none; border-radius: 8px; }
         .filter-btn { padding: 0.7rem 1.5rem; border: 2px solid var(--light-gray); background: var(--white); border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--gray); text-decoration: none; transition: 0.3s; }
@@ -165,7 +163,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         .empty-state { text-align: center; padding: 4rem; color: var(--gray); }
         .empty-state i { font-size: 4rem; color: var(--light-gray); }
 
-        .mobile-menu-btn { display: none; }
 
         .upload-section { background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 2rem; }
         .upload-section h2 { color: var(--primary); margin-bottom: 1rem; }
@@ -218,7 +215,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0; }
-            .mobile-menu-btn { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 1001; width: 45px; height: 45px; background: var(--primary); border: none; border-radius: 8px; color: var(--white); font-size: 1.2rem; cursor: pointer; }
         }
     </style>
 </head>
