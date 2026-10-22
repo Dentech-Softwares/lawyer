@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -102,6 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             color: var(--white);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 0.5rem 0;
             transition: all 0.3s ease;
             position: relative;
         }
@@ -717,6 +721,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </header>
 
+    <div class="page-content">
     <!-- Page Title -->
     <section class="page-title">
         <h1>Contact Us</h1>
@@ -837,6 +842,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.1422937950147!2d-73.98513018459391!3d40.74881737932847!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259a9b3117469%3A0xd134e199a405a163!2sEmpire%20State%20Building!5e0!3m2!1sen!2sus!4v1234567890!5m2!1sen!2sus" 
         allowfullscreen="" loading="lazy"></iframe>
     </section>
+    </div>
 
     <!-- Live Chat Widget -->
     <div class="chat-widget">

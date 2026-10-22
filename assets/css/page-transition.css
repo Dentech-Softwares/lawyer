@@ -1,0 +1,89 @@
+/**
+ * Shared Page Entrance Transition
+ * Justice Law Firm - admin portal, client portal and public pages
+ *
+ * Gives every page a subtle "floating" entrance when it is opened, so
+ * navigating from a menu item feels fluid, lightweight and polished.
+ *
+ * Include this file in every page that renders HTML:
+ *   <link rel="stylesheet" href="assets/css/page-transition.css">
+ */
+
+@keyframes floatIn {
+    0% {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
+ * Fill mode note: "backwards" (not "forwards") is deliberate.
+ * With "forwards" the browser keeps the last keyframe applied forever, and
+ * Chrome reports that retained value as the identity matrix
+ * matrix(1, 0, 0, 1, 0, 0) instead of "none". A non-none transform makes the
+ * element a containing block, which silently re-anchors any
+ * position: fixed descendants (headers, chat widgets, modals).
+ * With "backwards" the element returns to its natural, untransformed state
+ * once the animation finishes, so fixed positioning keeps working.
+ */
+
+/* Portal pages (admin + client) */
+.main-content {
+    animation: floatIn 0.35s ease-out backwards;
+}
+
+/* Standalone page wrappers */
+.page-content,
+.container-fluid,
+.login-container,
+.register-container,
+.booking-card,
+.print-container {
+    animation: floatIn 0.35s ease-out backwards;
+}
+
+/* Top level content blocks */
+.card {
+    animation: floatIn 0.35s ease-out backwards;
+}
+
+/* Cards inside an already animated wrapper ride along with it */
+.main-content .card,
+.page-content .card,
+.container-fluid .card {
+    animation: none;
+}
+
+/* Accessibility: honour users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .main-content,
+    .page-content,
+    .container-fluid,
+    .login-container,
+    .register-container,
+    .booking-card,
+    .print-container,
+    .card {
+        animation: none;
+    }
+}
+
+/* Printing should never be affected by the entrance animation */
+@media print {
+    .main-content,
+    .page-content,
+    .container-fluid,
+    .login-container,
+    .register-container,
+    .booking-card,
+    .print-container,
+    .card {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}

@@ -88,6 +88,7 @@ function registerUser($name, $email, $phone, $password) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -125,18 +126,6 @@ function registerUser($name, $email, $phone, $password) {
             width: 100%;
             max-width: 500px;
             overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .register-header {

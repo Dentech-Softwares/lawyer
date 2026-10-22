@@ -188,6 +188,7 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Continue Case - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -319,18 +320,6 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.1);
             overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .booking-header {

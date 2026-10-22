@@ -62,6 +62,7 @@ $notes = $appointment['notes'] ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Print Appointment - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;

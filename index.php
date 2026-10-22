@@ -13,6 +13,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Justice Law Firm - Expert Legal Services</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -86,6 +87,9 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             color: var(--white);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 0.5rem 0;
             transition: all 0.3s ease;
             position: relative;
         }
@@ -684,6 +688,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
         </div>
     </header>
 
+    <div class="page-content">
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
@@ -836,6 +841,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             </a>
         </div>
     </section>
+    </div>
 
     <!-- Footer -->
     <footer>

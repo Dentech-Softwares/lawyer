@@ -6,15 +6,21 @@ error_reporting(E_ALL);
  * Appointment Details View - Test Version (Bypass Login) + Full PHP Block + HTML Structure
  */
 
+
 require_once 'db.php';
 
-// Bypass login check for testing
-$isAdmin = true;  // Simulate admin logged in
-$isClient = false;
+// Check if user is logged in (admin or client)
+$isAdmin = isset($_SESSION['admin_id']);
+$isClient = isset($_SESSION['user_id']);
+
+if (!$isAdmin && !$isClient) {
+    header('Location: login.php');
+    exit;
+}
 
 // Check if ID is provided
 if (!isset($_GET['id'])) {
-    $redirect = 'manage_appointments.php'; // dummy
+    $redirect = $isAdmin ? 'manage_appointments.php' : 'client_appointments.php';
     header('Location: ' . $redirect);
     exit;
 }
@@ -73,27 +79,14 @@ if ($isAdmin) {
     $admin_email = $_SESSION['admin_email'] ?? '';
     $admin_phone = $_SESSION['admin_phone'] ?? '';
     $current_date = date('F j, Y');
-    
-    $adminNotifications = getAllRows(
-        "SELECT a.id, u.name as client_name, a.case_type, a.created_at
-         FROM appointments a
-         JOIN users u ON a.user_id = u.id
-         WHERE a.status = 'pending' 
-         ORDER BY a.created_at DESC LIMIT 5"
-    );
-    $unreadAdminNotifications = getRow(
-        "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
-        [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
-    );
     $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND is_read = 0")["count"] ?? 0;
     $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
 } else {
-    $user_id = $_SESSION['user_id'];
-    $user_name = $_SESSION['user_name'] ?? '';
-    $user_email = $_SESSION['user_email'] ?? '';
+    $user_id = $_SESSION['user_id'] ?? ($_SESSION['client_id'] ?? '');
+    $user_name = $_SESSION['user_name'] ?? $_SESSION['client_name'] ?? $_SESSION['name'] ?? '';
+    $user_email = $_SESSION['user_email'] ?? $_SESSION['client_email'] ?? $_SESSION['email'] ?? '';
     $current_date = date('F j, Y');
     $user = getRow("SELECT * FROM users WHERE id = ?", [$user_id]);
-    
     $notifications = getAllRows(
         "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
         [$user_id]
@@ -104,15 +97,15 @@ if ($isAdmin) {
     );
     $userPendingCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status = 'pending' AND is_read = 0", [$user_id])["count"] ?? 0;
 }
+
 ?>
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Details - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;

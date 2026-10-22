@@ -51,6 +51,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
     <title>Admin Dashboard - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;

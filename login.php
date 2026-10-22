@@ -85,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -122,18 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             width: 100%;
             max-width: 450px;
             overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .login-header {
@@ -437,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="login">
                         <i class="fas fa-user"></i> Email Address or Phone Number
                     </label>
-                    <input type="text" id="login" name="login" placeholder="john@example.com or +1 (555) 123-4567" required>
+                    <input type="text" id="login" name="login" placeholder="Enter Email or Phone" required>
                 </div>
                 
                 <div class="form-group">

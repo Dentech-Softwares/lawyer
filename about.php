@@ -8,6 +8,7 @@ require_once 'db.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Us - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -79,6 +80,9 @@ require_once 'db.php';
             color: var(--white);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 0.5rem 0;
             transition: all 0.3s ease;
             position: relative;
         }
@@ -647,6 +651,7 @@ require_once 'db.php';
         </div>
     </header>
 
+    <div class="page-content">
     <!-- Page Title -->
     <section class="page-title">
         <h1>About Us</h1>
@@ -816,6 +821,7 @@ require_once 'db.php';
             </div>
         </div>
     </section>
+    </div>
 
     <!-- Footer -->
     <footer>

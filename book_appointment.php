@@ -123,6 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Appointment - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -197,6 +198,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             color: var(--white);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 0.5rem 0;
             transition: all 0.3s ease;
         }
 
@@ -251,18 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.1);
             overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .booking-header {
