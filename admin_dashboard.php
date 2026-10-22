@@ -439,6 +439,19 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
                 font-size: 1.3rem;
                 line-height: 1.2;
             }
+
+            /* The quick action tiles duplicate the sidebar links - drop them on mobile */
+            .admin-quick-actions,
+            .quick-actions-container,
+            .quick-actions {
+                display: none !important;
+            }
+
+            /* The "View All" button is not needed on a small screen */
+            .recent-appointments-header .btn-view-all,
+            .recent-appointments .btn {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -515,7 +528,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions">
+        <div class="quick-actions admin-quick-actions">
             <a href="manage_appointments.php" class="quick-action-btn">
                 <i class="fas fa-calendar-plus"></i>
                 Manage Appointments
@@ -531,10 +544,10 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         </div>
 
         <!-- Recent Appointments -->
-        <div class="section-card">
-            <div class="section-header">
+        <div class="section-card recent-appointments">
+            <div class="section-header recent-appointments-header">
                 <h2><i class="fas fa-calendar"></i> Recent Appointments</h2>
-                <a href="manage_appointments.php" class="btn btn-primary btn-sm">
+                <a href="manage_appointments.php" class="btn btn-primary btn-sm btn-view-all">
                     View All
                 </a>
             </div>

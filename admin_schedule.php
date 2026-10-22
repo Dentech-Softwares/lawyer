@@ -269,10 +269,12 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
     <main class="main-content">
         <?php include __DIR__ . '/includes/dashboard_header_styles.php'; ?>
         <div class="header">
-            <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
-                <i class="fas fa-bars"></i>
-            </button>
-            <h1 class="title-large"><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
+            <div class="mobile-header-left">
+                <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="title-large"><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
+            </div>
         </div>
 
         <?php if($success): ?>

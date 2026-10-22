@@ -49,10 +49,23 @@
         line-height: 1.3;
     }
 
+    /* Desktop keeps the greeting, mobile swaps in the short name */
+    .header-greeting-mobile {
+        display: none;
+    }
+
     .header-actions {
         display: flex;
         gap: 1rem;
         align-items: center;
+    }
+
+    /* Left group: toggle + title, they travel together */
+    .mobile-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
     }
 
     /* Sidebar toggle - lives in the header bar, far left on mobile */
@@ -342,51 +355,115 @@
        ========================================================== */
     @media (max-width: 768px) {
         .header {
-            /* Hamburger far left, notification + profile far right */
+            /* One slim row: [toggle][name] .......... [bell][avatar] */
             display: flex;
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
             justify-content: space-between;
-            gap: 0.5rem 0.75rem;
-            padding: 0.75rem 1rem;
+            gap: 0.5rem;
+            min-height: auto;
+            padding: 6px 0.75rem;
             margin-bottom: 1rem;
             border-radius: 12px;
             position: sticky;
             top: 0;
             z-index: 900;
+
+            /* Brand navy, the same gradient as the homepage header and sidebar */
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 4px 14px rgba(26, 58, 92, 0.25);
+            color: #ffffff;
+        }
+
+        /* Toggle and user name stay together on the left */
+        .mobile-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
         }
 
         .header-menu-btn {
             display: flex;
+            background: rgba(255, 255, 255, 0.16);
+            color: #ffffff;
         }
 
+        .header-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+            color: #ffffff;
+        }
+
+        /* The title becomes the short user name, inline with the actions */
+        .header h1,
+        .header h1.title-large {
+            order: 0;
+            flex: 0 1 auto;
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #ffffff;
+        }
+
+        /* No "Welcome back," on mobile - just the name */
+        .header-greeting {
+            display: none;
+        }
+
+        .header-greeting-mobile {
+            display: inline;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-right: 8px;
+            color: #ffffff;
+        }
+
+        /* Keep an inline title icon in step with the compact title */
+        .header h1 i {
+            font-size: 0.9rem !important;
+        }
+
+        /* Bell and avatar stay grouped on the far right */
         .header-actions {
             gap: 0.5rem;
             margin-left: auto;
         }
 
-        /* The welcome line moves under the bar so it never crowds it */
-        .header h1,
-        .header h1.title-large {
-            order: 3;
-            flex-basis: 100%;
-            font-size: 1.1rem;
-            line-height: 1.35;
-            margin: 0.5rem 0 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Keep an inline title icon in step with the compact title */
-        .header h1 i {
-            font-size: 1rem !important;
+        /* The name now lives in the header row, so the trigger keeps the badge only */
+        .profile-name-row,
+        .profile-chevron {
+            display: none;
         }
 
         .notification-bell {
             width: 40px;
             height: 40px;
+            background: rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+        }
+
+        .notification-bell:hover,
+        .notification-bell.active {
+            background: rgba(255, 255, 255, 0.26);
+            color: #ffffff;
+        }
+
+        .profile-trigger:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .profile-badge {
+            width: 34px;
+            height: 34px;
+            font-size: 0.75rem;
+            background: var(--accent);
+            color: var(--primary);
         }
 
         /* Dropdowns align with the card edges so they never leave the screen */
@@ -406,28 +483,12 @@
 
         .profile-trigger {
             padding: 0.25rem;
-            gap: 0.5rem;
-        }
-
-        .profile-badge {
-            width: 34px;
-            height: 34px;
-            font-size: 0.75rem;
+            gap: 0;
         }
     }
 
-    /* Very small screens: initials badge + bell only */
+    /* Very small screens: slightly tighter bell and badge */
     @media (max-width: 576px) {
-        .profile-name-row,
-        .profile-chevron {
-            display: none;
-        }
-
-        .profile-trigger {
-            padding: 0.25rem;
-            gap: 0;
-        }
-
         .profile-badge {
             width: 32px;
             height: 32px;

@@ -4,14 +4,23 @@
 // $admin_username, $admin_email, $current_date
 // $unreadAdminNotifications (array with 'count'), $adminNotifications (array of rows)
 require_once __DIR__ . '/includes/helpers.php';
+
+// Short name for the compact mobile header bar: first two names only
+$nameParts = array_filter(explode(' ', trim($admin_username ?? '')));
+$displayName = implode(' ', array_slice($nameParts, 0, 2));
 ?>
 <?php include __DIR__ . '/includes/dashboard_header_styles.php'; ?>
 
 <div class="header">
-    <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
-        <i class="fas fa-bars"></i>
-    </button>
-    <h1>Welcome back, <?php echo htmlspecialchars($admin_username ?? ''); ?>!</h1>
+    <div class="mobile-header-left">
+        <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h1>
+            <span class="header-greeting">Welcome back, <?php echo htmlspecialchars($admin_username ?? ''); ?>!</span>
+            <span class="header-greeting-mobile"><?php echo htmlspecialchars($displayName); ?></span>
+        </h1>
+    </div>
     <div class="header-actions">
         <div class="notification-bell" id="notificationBell" onclick="toggleNotifications()">
             <i class="fas fa-bell"></i>
