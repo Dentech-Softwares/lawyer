@@ -140,6 +140,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             overflow: hidden;
         }
 
+        .home-link {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: var(--white);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            padding: 0.5rem 0.9rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            transition: background 0.3s ease;
+            z-index: 10;
+        }
+
+        .home-link:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
         .login-header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             padding: 2.5rem;
@@ -176,6 +197,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .login-header p {
             opacity: 0.9;
+        }
+
+                .home-bottom-link {
+            text-align: center;
+            margin-top: 1.2rem;
+        }
+
+        .home-bottom-link a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .home-bottom-link a:hover {
+            color: var(--accent);
         }
 
         .login-body {
@@ -409,7 +450,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 padding: 2rem;
             }
 
-            .login-body {
+                    .home-bottom-link {
+            text-align: center;
+            margin-top: 1.2rem;
+        }
+
+        .home-bottom-link a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .home-bottom-link a:hover {
+            color: var(--accent);
+        }
+
+        .login-body {
                 padding: 1.5rem;
             }
         }
@@ -417,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="login-container">
-<div class="login-header">
+        <div class="login-header">
             <i class="fas fa-gavel"></i>
             <h1>Welcome Back</h1>
             <p>Login with your email address or phone number</p>
@@ -470,9 +531,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 Don't have an account? <a href="register.php">Register here</a>
             </div>
 
-            <div class="back-home">
+            <div class="home-bottom-link">
                 <a href="index.php">
-                    <i class="fas fa-arrow-left"></i> Back to Home
+                    <i class="fas fa-home"></i> Back to Home
                 </a>
             </div>
         </div>

@@ -1,5 +1,8 @@
 <?php
 require_once 'db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Get stats for the hero section
 $totalAppointments = getRow("SELECT COUNT(*) as count FROM appointments");
@@ -14,6 +17,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
     <title>Justice Law Firm - Expert Legal Services</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
+    <link rel="stylesheet" href="assets/css/unified-header.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -776,49 +780,70 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             .hero-buttons {
                 flex-direction: column;
             }
-
+            /* Hide stats block on mobile */
             .stats {
-                grid-template-columns: 1fr;
-                margin-left: 1rem;
-                margin-right: 1rem;
+                display: none !important;
+            }
+
+            .stat-card {
+                padding: 12px 8px;
+            }
+
+            .stat-card i {
+                font-size: 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .stat-card h3 {
+                font-size: 1.2rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .stat-card p {
+                font-size: 0.78rem;
+                line-height: 1.4;
+            }
+
+            /* Compact mobile grid for Why Choose Us */
+            .why-us {
+                padding: 3rem 1rem;
+            }
+
+            .why-us-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px 12px;
+            }
+
+            .why-us-card {
+                padding: 12px 8px;
+            }
+
+            .why-us-card .icon {
+                width: 36px;
+                height: 36px;
+                margin-bottom: 0.75rem;
+            }
+
+            .why-us-card .icon i {
+                font-size: 1.5rem;
+            }
+
+            .why-us-card h3 {
+                font-size: 1.2rem;
+                margin-bottom: 0.5rem;
+                line-height: 1.3;
+            }
+
+            .why-us-card p {
+                font-size: 0.78rem;
+                line-height: 1.4;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="header-container">
-            <nav class="navbar">
-                <div class="logo">
-                    <i class="fas fa-gavel"></i>
-                    <span>Justice Law</span>
-                </div>
-
-                <div class="navbar-menu" id="navbarMenu">
-                    <ul class="nav-links">
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="about.php">About</a></li>
-                        <li><a href="services.php">Services</a></li>
-                        <li><a href="contact.php">Contact</a></li>
-                    </ul>
-                    <div class="auth-buttons">
-                        <?php if(isset($_SESSION['user_id'])): ?>
-                            <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
-                            <a href="logout.php" class="btn btn-primary">Logout</a>
-                        <?php else: ?>
-                            <a href="login.php" class="btn btn-outline">Login</a>
-                            <a href="register.php" class="btn btn-primary">Register</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <button class="mobile-menu-btn" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navbarMenu">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+    <!-- Unified Header -->
+    <?php include 'includes/header.php'; ?>
 
     <div class="page-content">
     <!-- Hero Section -->

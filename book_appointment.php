@@ -1,5 +1,8 @@
 <?php
 require_once 'db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once 'includes/helpers.php';
 
 $success = '';
@@ -577,35 +580,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php endif; ?>
 
     <?php if (!$showClientPortal): ?>
-    <!-- Header -->
-    <header>
-        <div class="header-container">
-            <nav class="navbar">
-                <div class="logo">
-                    <i class="fas fa-gavel"></i>
-                    <span>Justice Law</span>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="about.php">About</a></li>
-                    <li><a href="services.php">Services</a></li>
-                    <li><a href="contact.php">Contact</a></li>
-                </ul>
-                <div class="auth-buttons">
-                    <?php if(isset($_SESSION['user_id'])): ?>
-                        <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
-                        <a href="logout.php" class="btn btn-primary">Logout</a>
-                    <?php else: ?>
-                        <a href="login.php" class="btn btn-outline">Login</a>
-                        <a href="register.php" class="btn btn-primary">Register</a>
-                    <?php endif; ?>
-                </div>
-                <div class="navbar-toggle-btn">
-                    <i class="fas fa-bars"></i>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <!-- Unified Header -->
+    <?php include 'includes/header.php'; ?>
     <?php endif; ?>
 
     <?php if ($showClientPortal): ?>
@@ -752,15 +728,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </label>
                             <div class="time-slots" id="timeSlots">
                                 <input type="hidden" name="time" id="selectedTime" value="<?php echo isset($time) ? htmlspecialchars($time) : ''; ?>">
-                                <div class="time-slot" data-time="09:00:00">9:00 AM</div>
-                                <div class="time-slot" data-time="10:00:00">10:00 AM</div>
-                                <div class="time-slot" data-time="11:00:00">11:00 AM</div>
-                                <div class="time-slot" data-time="12:00:00">12:00 PM</div>
-                                <div class="time-slot" data-time="13:00:00">1:00 PM</div>
-                                <div class="time-slot" data-time="14:00:00">2:00 PM</div>
-                                <div class="time-slot" data-time="15:00:00">3:00 PM</div>
-                                <div class="time-slot" data-time="16:00:00">4:00 PM</div>
-                                <div class="time-slot" data-time="17:00:00">5:00 PM</div>
+                                <div class="time-slot" data-time="09:00:00">09:00</div>
+                                <div class="time-slot" data-time="10:00:00">10:00</div>
+                                <div class="time-slot" data-time="11:00:00">11:00</div>
+                                <div class="time-slot" data-time="12:00:00">12:00</div>
+                                <div class="time-slot" data-time="13:00:00">13:00</div>
+                                <div class="time-slot" data-time="14:00:00">14:00</div>
+                                <div class="time-slot" data-time="15:00:00">15:00</div>
+                                <div class="time-slot" data-time="16:00:00">16:00</div>
+                                <div class="time-slot" data-time="17:00:00">17:00</div>
                             </div>
                             <p class="slot-hint" id="slotHint"></p>
                         </div>

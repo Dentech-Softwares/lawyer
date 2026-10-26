@@ -1,5 +1,8 @@
 <?php
 require_once 'db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $success = '';
 $error = '';
@@ -30,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Contact Us - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
+    <link rel="stylesheet" href="assets/css/unified-header.css">
     <style>
         :root {
             --primary: #1a3a5c;
@@ -55,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background-color: var(--light-gray);
             color: var(--dark);
             line-height: 1.6;
+                    padding-top: 70px;
         }
 
         /* Header & Navigation */
@@ -485,6 +490,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             padding: 1rem;
             height: 250px;
             overflow-y: auto;
+                    padding-top: 70px;
         }
 
         .chat-message {
@@ -691,35 +697,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="header-container">
-            <nav class="navbar">
-            <div class="logo">
-                <i class="fas fa-gavel"></i>
-                <span>Justice Law</span>
-            </div>
-            <ul class="nav-links">
-                <li><a href="index.php">Home</a></li>
-                <li><a href="about.php">About</a></li>
-                <li><a href="services.php">Services</a></li>
-                <li><a href="contact.php">Contact</a></li>
-            </ul>
-            <div class="auth-buttons">
-                <?php if(isset($_SESSION['user_id'])): ?>
-                    <a href="client_dashboard.php" class="btn btn-outline">Dashboard</a>
-                    <a href="logout.php" class="btn btn-primary">Logout</a>
-                <?php else: ?>
-                    <a href="login.php" class="btn btn-outline">Login</a>
-                    <a href="register.php" class="btn btn-primary">Register</a>
-                <?php endif; ?>
-            </div>
-            <div class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </div>
-        </nav>
-        </div>
-    </header>
+    <!-- Unified Header -->
+    <?php include 'includes/header.php'; ?>
 
     <div class="page-content">
     <!-- Page Title -->

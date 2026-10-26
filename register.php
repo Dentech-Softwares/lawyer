@@ -156,6 +156,26 @@ function registerUser($name, $email, $phone, $password) {
             opacity: 0.9;
         }
 
+                .home-bottom-link {
+            text-align: center;
+            margin-top: 1.2rem;
+        }
+
+        .home-bottom-link a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .home-bottom-link a:hover {
+            color: var(--accent);
+        }
+
         .register-body {
             padding: 2.5rem;
         }
@@ -392,7 +412,27 @@ function registerUser($name, $email, $phone, $password) {
                 padding: 2rem;
             }
 
-            .register-body {
+                    .home-bottom-link {
+            text-align: center;
+            margin-top: 1.2rem;
+        }
+
+        .home-bottom-link a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .home-bottom-link a:hover {
+            color: var(--accent);
+        }
+
+        .register-body {
                 padding: 1.5rem;
             }
         }
@@ -401,9 +441,11 @@ function registerUser($name, $email, $phone, $password) {
 <body>
     <div class="register-container">
         <div class="register-header">
+
             <i class="fas fa-gavel"></i>
             <h1>Create Account</h1>
             <p>Join Justice Law Firm today</p>
+        
         </div>
         
         <div class="register-body">
@@ -470,6 +512,12 @@ function registerUser($name, $email, $phone, $password) {
 
             <div class="login-link">
                 Already have an account? <a href="login.php">Login here</a>
+            </div>
+
+            <div class="home-bottom-link">
+                <a href="index.php">
+                    <i class="fas fa-home"></i> Back to Home
+                </a>
             </div>
 
             <div class="back-home">
