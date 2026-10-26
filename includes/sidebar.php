@@ -48,6 +48,9 @@ $user_initials = get_current_user_initials();
 $user_role_label = get_current_user_role();
 ?>
 
+<!-- Backdrop behind the mobile sidebar: tapping it closes the menu -->
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
@@ -95,4 +98,56 @@ $user_role_label = get_current_user_role();
             }
         };
     }
+
+    /*
+     * On small screens the menu closes again as soon as the visitor taps
+     * outside of it (on the backdrop or on the page itself). The Escape key
+     * does the same.
+     */
+    (function () {
+        var sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        var mobile = window.matchMedia('(max-width: 1024px)');
+
+        function isOpen() {
+            return sidebar.classList.contains('active') || sidebar.classList.contains('open');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('active', 'open');
+            document.body.classList.remove('sidebar-open');
+        }
+
+        function syncState() {
+            document.body.classList.toggle('sidebar-open', isOpen());
+        }
+
+        document.addEventListener('click', function (event) {
+            if (!mobile.matches || !isOpen()) return;
+
+            // A tap inside the menu keeps it open
+            if (sidebar.contains(event.target)) return;
+
+            // The toggle button opens and closes the menu by itself
+            if (event.target.closest('.header-menu-btn')) return;
+
+            closeSidebar();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && isOpen()) {
+                closeSidebar();
+            }
+        });
+
+        // Keep the backdrop in step with the menu state, whoever opened it
+        if (typeof MutationObserver !== 'undefined') {
+            new MutationObserver(syncState).observe(sidebar, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
+        syncState();
+    })();
 </script>

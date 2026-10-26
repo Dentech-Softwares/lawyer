@@ -665,7 +665,7 @@ require_once 'db.php';
             <!-- Real Estate -->
             <div class="service-card">
                 <div class="service-icon">
-                    <i class="fas fa-land-marks"></i>
+                    <i class="fas fa-house"></i>
                 </div>
                 <div class="service-content">
                     <h3>Real Estate Law</h3>

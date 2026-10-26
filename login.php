@@ -10,6 +10,11 @@ if ($sessionExpired) {
     $error = $sessionExpired;
 }
 
+// Message for a session that was replaced by a login from another device
+if (($_GET['error'] ?? '') === 'concurrent_login') {
+    $error = 'You have been logged out because your account was accessed from another device.';
+}
+
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     header('Location: client_dashboard.php');
@@ -36,13 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         
         if ($admin && password_verify($password, $admin['password'])) {
-            // Admin login successful
+            // Admin login successful - start a brand new session id
+            session_regenerate_id(true);
+
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_username'] = $admin['username'];
             $_SESSION['admin_email'] = $admin['email'];
             $_SESSION['admin_phone'] = $admin['phone'] ?? '';
             $_SESSION['last_activity'] = time();
-            
+
+            // Only this device stays signed in for the account
+            register_account_session('admin_users', (int)$admin['id']);
+
             // Redirect to admin dashboard
             header('Location: admin_dashboard.php');
             exit;
@@ -59,13 +69,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($user['is_blocked']) {
                 $error = 'Your account has been blocked. Please contact support.';
             } elseif (password_verify($password, $user['password'])) {
-                // Login successful
+                // Login successful - start a brand new session id
+                session_regenerate_id(true);
+
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
                 $_SESSION['user_phone'] = $user['phone'];
                 $_SESSION['last_activity'] = time();
-                
+
+                // Only this device stays signed in for the account
+                register_account_session('users', (int)$user['id']);
+
                 // Redirect to dashboard
                 header('Location: client_dashboard.php');
                 exit;

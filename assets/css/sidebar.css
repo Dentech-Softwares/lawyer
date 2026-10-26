@@ -273,6 +273,33 @@
     }
 }
 
+/*
+ * Backdrop behind the open sidebar. It dims the page and acts as the
+ * "tap outside to close" target on small screens. The body carries the
+ * "sidebar-open" class while the menu is open.
+ */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+    .sidebar-overlay {
+        display: block;
+    }
+
+    body.sidebar-open .sidebar-overlay {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
 /* Mobile: content spans the full width with a clean edge gutter */
 @media (max-width: 768px) {
     .main-content {

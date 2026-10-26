@@ -60,6 +60,8 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
     <title>Manage Appointments - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
+    <link rel="stylesheet" href="assets/css/status-badges.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -231,39 +233,15 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             background: #e8eef5;
         }
 
-        /* Highlight unread rows */
+        /* Highlight unread rows (the shared rule in assets/css/table-mobile.css
+           keeps this gold highlight on top of the zebra striping) */
         table.appointments-table tr.unread {
-            background-color: #f8f9fa;
-            border-left: 4px solid #f0ad4e;
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .status-badge.pending {
-            background: rgba(214, 158, 46, 0.1);
-            color: var(--warning);
-        }
-
-        .status-badge.approved {
-            background: rgba(56, 161, 105, 0.1);
-            color: var(--success);
-        }
-
-        .status-badge.rejected {
-            background: rgba(229, 62, 62, 0.1);
-            color: var(--danger);
-        }
-
-        .status-badge.completed {
-            background: rgba(49, 130, 206, 0.1);
-            color: var(--info);
-        }
+        /* Status pills come from assets/css/status-badges.css so they match
+           the badges on the Continuations table in admin_schedule.php */
 
         .action-buttons {
             display: flex;
@@ -440,9 +418,9 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
 
         <!-- Appointments Table -->
         <div class="section-card">
-            <div class="table-container">
+            <div class="table-container table-responsive">
                 <?php if(!empty($appointments)): ?>
-                    <table class="appointments-table">
+                    <table class="appointments-table table">
                         <thead>
                                 <tr>
                                     <th>Case #</th>
@@ -468,7 +446,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
                                         <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
                                     </td>
                                     <td>
-                                        <span class="status-badge <?php echo $apt['status']; ?>">
+                                        <span class="badge badge-status badge-<?php echo strtolower($apt['status']); ?>">
                                            <?php echo ucfirst($apt['status']); ?>
                                        </span>
                                     </td>
@@ -503,5 +481,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             document.getElementById('sidebar').classList.toggle('active');
         }
     </script>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

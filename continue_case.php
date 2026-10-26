@@ -7,6 +7,7 @@ error_reporting(E_ALL);
 define('CONTINUATION_FEE', 250);
 
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 // Check if client is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -69,6 +70,13 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['additional_note'])) {
+        // Only the firm may add case notes - clients have view-only access
+        if (!can_manage_case_notes()) {
+            $_SESSION['error'] = 'Unauthorized action. Clients have view-only access to case notes.';
+            header('Location: continue_case.php?id=' . $id);
+            exit;
+        }
+
         $additionalNote = trim($_POST['additional_note']);
 
         if (!empty($additionalNote)) {
@@ -188,6 +196,7 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Continue Case - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -968,7 +977,7 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
 
                 <!-- Case Notes -->
                 <div class="notes-container">
-                    <h3><i class="fas fa-clipboard-edit"></i> Case Notes</h3>
+                    <h3><i class="fas fa-clipboard-list"></i> Case Notes</h3>
                     <?php if(!empty($appointment['notes'])): ?>
                         <?php
                         $noteEntries = array_filter(array_map('trim', explode("\n\n", $appointment['notes'])));
@@ -992,6 +1001,7 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
                 </div>
 
                 <!-- Add Additional Notes -->
+                <?php if(can_manage_case_notes()): ?>
                 <div class="form-group">
                     <label for="additional_note">
                         <i class="fas fa-plus"></i> Add Additional Notes
@@ -1008,13 +1018,25 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
                         </div>
                     </form>
                 </div>
+                <?php else: ?>
+                <!-- Clients get a read-only view of the notes -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-lock"></i> Case Notes
+                    </label>
+                    <p class="no-notes">
+                        Case notes are maintained by Justice Law Firm.
+                        Contact your lawyer if you need an update on your case.
+                    </p>
+                </div>
+                <?php endif; ?>
 
                 <!-- Documents -->
                 <?php if(!empty($documents)): ?>
                     <div class="documents-section">
                         <h3><i class="fas fa-file-alt"></i> Uploaded Documents</h3>
-                        <div class="table-container">
-                            <table>
+                        <div class="table-container table-responsive">
+                            <table class="table">
                                 <thead>
                                     <tr>
                                         <th>Document</th>
@@ -1232,5 +1254,6 @@ if ($originalPayment && $originalPayment['amount'] > 0) {
             }
         });
     </script>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

@@ -50,14 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif (strtotime($date) < strtotime(date('Y-m-d')) && $date !== $appointment['date']) {
         $error = 'Please select a valid future date';
     } else {
-        // Check for duplicate booking at same date and time (excluding current appointment)
-        $existing = getRow(
-            "SELECT id FROM appointments WHERE date = ? AND time = ? AND status != 'rejected' AND id != ?",
+        // Capacity check (excluding the appointment being edited): a time slot
+        // can hold up to MAX_APPOINTMENTS_PER_SLOT clients
+        $slotBooked = getRow(
+            "SELECT COUNT(*) as count FROM appointments WHERE date = ? AND time = ? AND status != 'rejected' AND id != ?",
             [$date, $time, $id]
         );
-        
-        if ($existing) {
-            $error = 'This time slot is already booked. Please select another time.';
+
+        if ((int)($slotBooked['count'] ?? 0) >= MAX_APPOINTMENTS_PER_SLOT) {
+            $error = 'This time slot is now fully booked (' . MAX_APPOINTMENTS_PER_SLOT . ' appointments). Please select another time.';
         } else {
             // Update appointment
             $result = execute(

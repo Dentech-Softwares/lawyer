@@ -56,6 +56,13 @@ if (!$appointment) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Only administrators/lawyers can add or modify notes
+    if (!can_manage_case_notes()) {
+        $_SESSION['error'] = 'Unauthorized action. Clients have view-only access to case notes.';
+        header('Location: appointment_details.php?id=' . $id);
+        exit;
+    }
+
     $notes = trim($_POST['notes'] ?? '');
     
     $result = execute("UPDATE appointments SET notes = ? WHERE id = ?", [$notes, $id]);
@@ -426,7 +433,7 @@ body {
                     <div class="detail-item" style="margin-bottom: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                             <label for="notes" class="detail-label" style="margin-bottom: 0;">
-                                <i class="fas fa-clipboard-edit" style="color: var(--accent);"></i> Case Notes
+                                <i class="fas fa-clipboard-list" style="color: var(--accent);"></i> Case Notes
                             </label>
                             <span id="notesCount" style="font-size: 0.8rem; color: var(--gray); font-weight: 500;">
                                 <?php echo strlen($appointment['notes'] ?? ''); ?> characters

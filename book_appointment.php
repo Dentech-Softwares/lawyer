@@ -82,14 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif (strtotime($date) < strtotime(date('Y-m-d'))) {
         $error = 'Please select a valid future date';
     } else {
-        // Check for duplicate booking at same date and time
-        $existing = getRow(
-            "SELECT id FROM appointments WHERE date = ? AND time = ? AND status != 'rejected'",
+        // Capacity check: a time slot can hold up to MAX_APPOINTMENTS_PER_SLOT clients
+        $slotBooked = getRow(
+            "SELECT COUNT(*) as count FROM appointments WHERE date = ? AND time = ? AND status != 'rejected'",
             [$date, $time]
         );
-        
-        if ($existing) {
-            $error = 'This time slot is already booked. Please select another time.';
+
+        if ((int)($slotBooked['count'] ?? 0) >= MAX_APPOINTMENTS_PER_SLOT) {
+            $error = 'This time slot is now fully booked (' . MAX_APPOINTMENTS_PER_SLOT . ' appointments). Please select another time.';
         } else {
             // If not logged in, create or find user
             if (!$user_id) {
@@ -441,6 +441,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background: var(--light-gray);
         }
 
+        /* Remaining capacity shown under each time slot */
+        .time-slot .slot-note {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--gray);
+            letter-spacing: 0.01em;
+        }
+
+        .time-slot.unavailable .slot-note {
+            color: var(--danger);
+        }
+
+        .slot-hint {
+            margin-top: 0.6rem;
+            font-size: 0.8rem;
+            color: var(--gray);
+            min-height: 1rem;
+        }
+
+        .slot-hint.warning {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
         .submit-btn {
             width: 100%;
             padding: 1.2rem;
@@ -736,6 +762,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <div class="time-slot" data-time="16:00:00">4:00 PM</div>
                                 <div class="time-slot" data-time="17:00:00">5:00 PM</div>
                             </div>
+                            <p class="slot-hint" id="slotHint"></p>
                         </div>
                     </div>
                     
@@ -764,6 +791,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const timeSlots = document.querySelectorAll('.time-slot');
         const selectedTimeInput = document.getElementById('selectedTime');
         const selectedDateInput = document.getElementById('date');
+        const slotHint = document.getElementById('slotHint');
+        const MAX_PER_SLOT = <?php echo (int)MAX_APPOINTMENTS_PER_SLOT; ?>;
+
+        // Every slot carries a small note with the remaining capacity
+        timeSlots.forEach(slot => {
+            const note = document.createElement('small');
+            note.className = 'slot-note';
+            note.textContent = MAX_PER_SLOT + ' spots';
+            slot.appendChild(note);
+        });
 
         // Pre-select time if set
         const currentTime = '<?php echo isset($time) ? $time : ''; ?>';
@@ -776,29 +813,83 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         timeSlots.forEach(slot => {
             slot.addEventListener('click', function() {
+                // A full slot cannot be picked
+                if (this.classList.contains('unavailable')) {
+                    slotHint.textContent = 'This time slot is fully booked (' + MAX_PER_SLOT + ' appointments). Please pick another time.';
+                    slotHint.classList.add('warning');
+                    return;
+                }
+
                 // Remove selected from all
                 timeSlots.forEach(s => s.classList.remove('selected'));
                 // Add to clicked
                 this.classList.add('selected');
                 // Set hidden input
                 selectedTimeInput.value = this.dataset.time;
+
+                slotHint.textContent = '';
+                slotHint.classList.remove('warning');
             });
         });
 
+        // Load the real availability for the chosen date
+        function loadSlotAvailability(date) {
+            if (!date) return;
+
+            fetch('ajax_slot_availability.php?date=' + encodeURIComponent(date))
+                .then(response => response.json())
+                .then(data => {
+                    const availability = {};
+                    (data.slots || []).forEach(slot => {
+                        availability[slot.time] = slot;
+                    });
+
+                    timeSlots.forEach(slot => {
+                        const info = availability[slot.dataset.time];
+                        const note = slot.querySelector('.slot-note');
+
+                        if (!info) {
+                            slot.classList.remove('unavailable');
+                            if (note) note.textContent = MAX_PER_SLOT + ' spots';
+                            return;
+                        }
+
+                        const full = !info.available;
+                        slot.classList.toggle('unavailable', full);
+
+                        if (note) {
+                            if (full) {
+                                note.textContent = 'Fully booked';
+                            } else if (info.booked > 0) {
+                                note.textContent = info.remaining + ' of ' + MAX_PER_SLOT + ' left';
+                            } else {
+                                note.textContent = MAX_PER_SLOT + ' spots';
+                            }
+                        }
+
+                        // Drop a selection that is no longer possible
+                        if (full && slot.classList.contains('selected')) {
+                            slot.classList.remove('selected');
+                            selectedTimeInput.value = '';
+                        }
+                    });
+                })
+                .catch(() => {
+                    // Keep the slots as they are if the availability cannot be loaded
+                });
+        }
+
         // Check availability when date changes
         selectedDateInput.addEventListener('change', function() {
-            const date = this.value;
-            if (date) {
-                // In a real app, fetch booked times from server
-                // For demo, randomly mark some as unavailable
-                timeSlots.forEach(slot => {
-                    slot.classList.remove('unavailable');
-                    if (Math.random() < 0.2) {
-                        slot.classList.add('unavailable');
-                    }
-                });
-            }
+            slotHint.textContent = '';
+            slotHint.classList.remove('warning');
+            loadSlotAvailability(this.value);
         });
+
+        // The date may already be filled in (e.g. after a failed submission)
+        if (selectedDateInput.value) {
+            loadSlotAvailability(selectedDateInput.value);
+        }
 
         // Form Validation
         const bookingForm = document.getElementById('bookingForm');

@@ -1,0 +1,98 @@
+/**
+ * Shared table behaviour (admin + client portals)
+ * Justice Law Firm
+ *
+ * On small screens every data table is wrapped in a horizontally scrollable
+ * container. Cells keep their content on a single line (no ugly mid-word
+ * wrapping) and the rows are zebra striped with soft navy / gold tints so
+ * entries stay easy to follow while panning sideways.
+ *
+ * From 769px up the same soft striping is applied to every portal table,
+ * with a navy header band, a gentle hover state and a smooth transition.
+ * Unread rows keep their gold highlight and always win over the striping.
+ *
+ * Include this file on every portal page that renders a data table:
+ *   <link rel="stylesheet" href="assets/css/table-mobile.css">
+ */
+
+/* Horizontally scrollable table wrapper */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    /* No wrapping: dates, times, case types and badges stay on one line */
+    .table th,
+    .table td {
+        white-space: nowrap !important;
+        padding: 0.65rem 0.85rem !important;
+        font-size: 0.85rem;
+    }
+
+    /* A healthy minimum width so the table pans smoothly instead of squashing */
+    .table {
+        min-width: 600px;
+    }
+
+    /* Even rows: soft faded blue-grey tint */
+    .table tbody tr:nth-child(even) {
+        background-color: #f4f7fa !important;
+    }
+
+    /* Odd rows: soft faded warm amber / gold tint */
+    .table tbody tr:nth-child(odd) {
+        background-color: #fffdf5 !important;
+    }
+
+    /* Gentle hover / touch state */
+    .table tbody tr:hover {
+        background-color: #eef3f8 !important;
+    }
+}
+
+/* Desktop: the same calm, readable styling as the mobile tables */
+@media (min-width: 769px) {
+    /* Even rows: soft faded blue-grey tint */
+    .table tbody tr:nth-child(even) {
+        background-color: #f4f7fa !important;
+    }
+
+    /* Odd rows: soft faded warm amber / gold tint */
+    .table tbody tr:nth-child(odd) {
+        background-color: #fffdf5 !important;
+    }
+
+    /* Smooth fade when the hover state kicks in (beats the page level
+       "transition: background .2s" rules so the timing stays consistent) */
+    .table tbody tr {
+        transition: background-color 0.15s ease-in-out !important;
+    }
+
+    /* Navy header band */
+    .table thead th {
+        background: #1a3a5c !important;
+        color: #ffffff !important;
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 0.02em;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.18) !important;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared overrides - declared last so they beat the page level table styles
+ * and the striping above.
+ * ------------------------------------------------------------------------ */
+
+/* Unread rows keep their gold highlight and take priority over the stripes */
+.table tbody tr.unread {
+    background-color: #fff9e6 !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
+/* Gentle hover state for every portal table */
+.table tbody tr:hover {
+    background-color: #eef3f8 !important;
+}

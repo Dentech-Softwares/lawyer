@@ -9,6 +9,9 @@ define('DB_USERNAME', 'root');
 define('DB_PASSWORD', '');
 define('DB_NAME', 'lawyer_system');
 
+// Maximum number of clients that may be booked into the same date + time slot
+define('MAX_APPOINTMENTS_PER_SLOT', 5);
+
 $conn = mysqli_connect(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
 if (!$conn) {
@@ -103,6 +106,14 @@ if (isset($_SESSION['last_activity'])) {
 
 // Update last activity timestamp
 $_SESSION['last_activity'] = time();
+
+// Single active session: only the device that logged in may keep using the
+// account, so every request is checked against the stored session id.
+// The login page is exempt - that is where a session gets established.
+require_once __DIR__ . '/includes/auth_check.php';
+if (basename($_SERVER['SCRIPT_NAME'] ?? '') !== 'login.php') {
+    enforce_single_session();
+}
 
 /**
  * Check if the current session has expired due to inactivity.

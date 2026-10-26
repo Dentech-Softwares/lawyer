@@ -43,6 +43,7 @@ $unreadNotifications = getRow(
     <title>My Appointments - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -215,9 +216,9 @@ $unreadNotifications = getRow(
                 <h2>All Appointments</h2>
                 <a href="book_appointment.php" class="btn btn-primary"><i class="fas fa-plus"></i> New Appointment</a>
             </div>
-            <div class="table-container">
+            <div class="table-container table-responsive">
                 <?php if(!empty($appointments)): ?>
-                    <table class="appointments-table">
+                    <table class="appointments-table table">
                         <thead>
                              <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th><th>Continuation</th></tr>
                         </thead>
@@ -255,5 +256,6 @@ $unreadNotifications = getRow(
             </div>
         </div>
     </main>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

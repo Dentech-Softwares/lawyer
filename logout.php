@@ -1,23 +1,24 @@
 <?php
 /**
  * Logout Handler
- * Destroys session and redirects to home page
+ * Releases the account session lock, destroys the session and redirects
+ * to the home page
  */
 
 require_once 'db.php';
+require_once 'includes/auth_check.php';
 
 // Destroy session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Clear all session variables
-$_SESSION = [];
+// Free the account session lock so the account can be signed in again
+if (!empty($_SESSION['admin_id'])) {
+    release_account_session('admin_users', (int)$_SESSION['admin_id']);
+} elseif (!empty($_SESSION['user_id'])) {
+    release_account_session('users', (int)$_SESSION['user_id']);
+}
 
-// Destroy the session
-session_destroy();
-
-// Redirect to home page
-header('Location: index.php');
-exit;
-?>
+// Clear all session variables, drop the cookie and destroy the session
+destroy_session_and_redirect('index.php');

@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 
 
 require_once 'db.php';
+require_once 'includes/helpers.php';
 
 // Check if user is logged in (admin or client)
 $isAdmin = isset($_SESSION['admin_id']);
@@ -55,6 +56,13 @@ $success = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_notes'])) {
+    // Only the firm may write case notes - clients have view-only access
+    if (!can_manage_case_notes()) {
+        $_SESSION['error'] = 'Unauthorized action. Clients have view-only access to case notes.';
+        header('Location: appointment_details.php?id=' . $id);
+        exit;
+    }
+
     $notes = trim($_POST['notes'] ?? '');
     
     $result = execute("UPDATE appointments SET notes = ? WHERE id = ?", [$notes, $id]);
@@ -456,9 +464,10 @@ if ($isAdmin) {
             width: 36px;
             height: 36px;
             border-radius: 6px;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
             cursor: pointer;
             transition: all 0.3s ease;
             border: none;
@@ -468,6 +477,15 @@ if ($isAdmin) {
 
         .btn-icon i {
             color: inherit;
+            font-size: 0.9rem;
+            line-height: 1;
+        }
+
+        /* Crisp white glyphs on the solid coloured buttons */
+        .btn-icon.btn-info i,
+        .btn-icon.btn-success i,
+        .btn-icon.btn-danger i {
+            color: #ffffff;
         }
 
         /* Documents Table */
@@ -596,7 +614,7 @@ if ($isAdmin) {
                             <i class="fas fa-edit"></i>
                         </a>
                         <a href="appointment_notes.php?id=<?php echo $appointment['id']; ?>" class="btn-icon btn-info" title="Manage Notes">
-                            <i class="fas fa-clipboard-edit"></i>
+                            <i class="fas fa-clipboard-list"></i>
                         </a>
                         <a href="continue_case.php?id=<?php echo $appointment['id']; ?>" class="btn-icon btn-success" title="Continue Case">
                             <i class="fas fa-gavel"></i>
@@ -709,7 +727,7 @@ if ($isAdmin) {
         <!-- Case Notes Card -->
         <div class="card">
             <div class="card-header">
-                <h2><i class="fas fa-clipboard-edit"></i> Case Notes</h2>
+                <h2><i class="fas fa-clipboard-list"></i> Case Notes</h2>
             </div>
             <div class="card-body">
                 <div class="notes-container">
@@ -735,13 +753,14 @@ if ($isAdmin) {
                     <?php endif; ?>
                 </div>
 
+                <?php if($isAdmin): ?>
                 <!-- Update Notes Form -->
                 <form method="POST" action="">
                     <div class="form-group">
                         <label for="notes">
                             <i class="fas fa-plus"></i> Add / Update Case Notes
                         </label>
-                        <textarea id="notes" name="notes" 
+                        <textarea id="notes" name="notes"
                                   placeholder="Enter case notes, updates, or observations... Each entry will be timestamped."><?php echo htmlspecialchars($notes ?? ''); ?></textarea>
                     </div>
                     <div class="form-actions">
@@ -750,6 +769,14 @@ if ($isAdmin) {
                         </button>
                     </div>
                 </form>
+                <?php else: ?>
+                <!-- Clients get a read-only view of the notes -->
+                <div class="no-notes">
+                    <i class="fas fa-lock"></i> Case notes are maintained by Justice Law Firm.
+                    Contact your lawyer if you need an update on your case.
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
+    <script src="assets/js/auto-update.js"></script>

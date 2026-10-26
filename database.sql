@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20) NOT NULL,
     password VARCHAR(255) NOT NULL,
     is_blocked TINYINT(1) DEFAULT 0,
+    current_session_id VARCHAR(255) NULL DEFAULT NULL,
+    last_login DATETIME NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_phone (phone)
 );
@@ -22,6 +24,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    current_session_id VARCHAR(255) NULL DEFAULT NULL,
+    last_login DATETIME NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -110,3 +114,9 @@ CREATE TABLE IF NOT EXISTS sms_logs (
     status ENUM('sent', 'failed', 'pending') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration: single active session support (one device at a time)
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_id VARCHAR(255) NULL DEFAULT NULL AFTER is_blocked;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login DATETIME NULL DEFAULT NULL AFTER current_session_id;
+-- ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS current_session_id VARCHAR(255) NULL DEFAULT NULL AFTER password;
+-- ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_login DATETIME NULL DEFAULT NULL AFTER current_session_id;

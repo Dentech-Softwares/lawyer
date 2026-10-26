@@ -113,6 +113,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
     <title>Manage Documents - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -280,9 +281,9 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         </div>
 
         <div class="section-card">
-            <div class="table-container">
+            <div class="table-container table-responsive">
                 <?php if(!empty($documents)): ?>
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Document</th>
@@ -396,5 +397,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             }
         }
     </script>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

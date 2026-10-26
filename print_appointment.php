@@ -331,7 +331,7 @@ $notes = $appointment['notes'] ?? '';
         </div>
 
         <div class="detail-section">
-            <h2><i class="fas fa-clipboard-edit"></i> Lawyer Notes</h2>
+            <h2><i class="fas fa-clipboard-list"></i> Lawyer Notes</h2>
             <?php if (!empty($notes)): ?>
                 <div class="notes-box"><?php echo htmlspecialchars($notes); ?></div>
             <?php else: ?>

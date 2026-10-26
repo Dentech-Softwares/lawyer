@@ -104,6 +104,26 @@ if (!function_exists('is_client')) {
     }
 }
 
+if (!function_exists('can_manage_case_notes')) {
+    /**
+     * Case notes are maintained by the firm only.
+     * Clients get a strictly read-only view of the notes on their own cases.
+     *
+     * Supports an explicit $_SESSION['role'] when one is set, and falls back
+     * to the admin session flag used by the portal.
+     *
+     * @return bool
+     */
+    function can_manage_case_notes(): bool
+    {
+        if (isset($_SESSION['role']) && $_SESSION['role'] !== '') {
+            return $_SESSION['role'] === 'admin';
+        }
+
+        return isset($_SESSION['admin_id']);
+    }
+}
+
 if (!function_exists('formatKenyanPhone')) {
     function formatKenyanPhone(string $phone): string
     {

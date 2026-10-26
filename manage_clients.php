@@ -45,6 +45,7 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
     <title>Manage Clients - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -284,6 +285,34 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
                 margin-left: 0;
             }
         }
+
+        @media (max-width: 768px) {
+            /* Trim the filter panel so the pills have room to breathe */
+            .filters {
+                padding: 1rem;
+            }
+
+            /* All / Active / Blocked stay on a single horizontal row */
+            .filter-buttons {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                align-items: center !important;
+                gap: 8px !important;
+                overflow-x: auto;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Compact pills: no wrapping, no second line */
+            .filter-btn {
+                flex: 1 1 auto;
+                padding: 0.35rem 0.75rem !important;
+                font-size: 0.85rem !important;
+                white-space: nowrap !important;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -309,9 +338,9 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
         </div>
 
         <div class="section-card">
-            <div class="table-container">
+            <div class="table-container table-responsive">
                 <?php if(!empty($clients)): ?>
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Client</th>
@@ -376,5 +405,6 @@ $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHE
             document.getElementById('sidebar').classList.toggle('active');
         }
     </script>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

@@ -73,7 +73,21 @@ $continuationAppointments = getAllRows(
 // Admin header data
 $admin_username = $_SESSION['admin_username'];
 $admin_email = $_SESSION['admin_email'] ?? '';
+$admin_phone = $_SESSION['admin_phone'] ?? '';
 $current_date = date('F j, Y');
+
+// Admin notifications for the header bell
+$adminNotifications = getAllRows(
+    "SELECT a.id, u.name as client_name, a.case_type, a.created_at
+     FROM appointments a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.status = 'pending'
+     ORDER BY a.created_at DESC LIMIT 5"
+);
+$unreadAdminNotifications = getRow(
+    "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND created_at > ?",
+    [$_SESSION['admin_last_appointments_view'] ?? '1970-01-01 00:00:00']
+);
 
 // Admin notifications - count of flagged continuations for the sidebar badge
 $continuationBadgeCount = getRow("SELECT COUNT(*) as count FROM appointments WHERE is_continuation = 1 AND status != 'completed' AND is_read = 0")["count"] ?? 0;
@@ -88,6 +102,8 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
     <title>Schedule Appointments - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
+    <link rel="stylesheet" href="assets/css/status-badges.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -117,9 +133,25 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
             color: var(--dark);
         }
 
-        /* Keep the page title large; the shared header styles load later */
-        .header h1.title-large {
+        /* Page title lives in the content area, under the shared header card */
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .page-title h1 {
+            margin: 0;
             font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .page-title h1 {
+                font-size: 1.35rem;
+            }
         }
 
         .alert {
@@ -205,18 +237,8 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
             border-bottom: none;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .status-badge.pending {
-            background: rgba(214, 158, 46, 0.1);
-            color: var(--warning);
-        }
+        /* Status pills come from assets/css/status-badges.css so they match
+           the badges on manage_appointments.php */
 
         .empty-state {
             text-align: center;
@@ -267,14 +289,11 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
 
     <!-- Main Content -->
     <main class="main-content">
-        <?php include __DIR__ . '/includes/dashboard_header_styles.php'; ?>
-        <div class="header">
-            <div class="mobile-header-left">
-                <button class="header-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1 class="title-large"><i class="fas fa-clock" style="color: var(--warning); font-size: 1.4rem;"></i> Continuations</h1>
-            </div>
+        <?php include 'admin_header.php'; ?>
+
+        <!-- Page title sits below the header card, not inside the navbar -->
+        <div class="page-title">
+            <h1><i class="fas fa-clock" style="color: var(--warning); font-size: 1.3rem;"></i> Continuations</h1>
         </div>
 
         <?php if($success): ?>
@@ -294,9 +313,9 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
                 <h2><i class="fas fa-calendar-check" style="color: var(--warning);"></i> All Appointments (<?php echo count($allAppointments); ?>) — <span style="color: var(--gray); font-weight: 400;"><?php echo count($continuationAppointments); ?> flagged as continuation</span></h2>
             </div>
 
-            <div class="table-container">
+            <div class="table-container table-responsive">
                 <?php if(!empty($allAppointments)): ?>
-                    <table class="continuations-table">
+                    <table class="continuations-table table">
                         <thead>
                             <tr>
                                 <th>Case #</th>
@@ -321,7 +340,7 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
                                     <small><?php echo date('h:i A', strtotime($apt['time'])); ?></small>
                                 </td>
                                 <td>
-                                    <span class="status-badge <?php echo $apt['status']; ?>">
+                                    <span class="badge badge-status badge-<?php echo strtolower($apt['status']); ?>">
                                         <?php echo ucfirst($apt['status']); ?>
                                     </span>
                                 </td>
@@ -356,5 +375,6 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
             document.getElementById('sidebar').classList.toggle('active');
         }
     </script>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>

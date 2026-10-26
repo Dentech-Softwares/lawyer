@@ -61,6 +61,7 @@ if (isset($_GET['mark_read'])) {
     <title>Dashboard - Justice Law Firm</title>
     <link rel="stylesheet" href="fontawesome-free-7.3.1-web/css/all.min.css">
     <link rel="stylesheet" href="assets/css/sidebar.css">
+    <link rel="stylesheet" href="assets/css/table-mobile.css">
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -512,9 +513,9 @@ if (isset($_GET['mark_read'])) {
                 </a>
             </div>
             
-<div class="table-container">
+<div class="table-container table-responsive">
                 <?php if(!empty($appointments)): ?>
-                    <table class="appointments-table">
+                    <table class="appointments-table table">
                         <thead>
                             <tr>
                                 <th>Case Type</th>
@@ -563,5 +564,6 @@ if (isset($_GET['mark_read'])) {
             </div>
         </div>
     </main>
+    <script src="assets/js/auto-update.js"></script>
 </body>
 </html>
