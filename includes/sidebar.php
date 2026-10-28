@@ -29,8 +29,8 @@ $admin_nav = [
     ['key' => 'schedule',        'href' => 'admin_schedule.php',        'icon' => 'fa-clock',        'label' => 'Continuations'],
     ['key' => 'clients',         'href' => 'manage_clients.php',        'icon' => 'fa-users',        'label' => 'Clients'],
     ['key' => 'documents',       'href' => 'manage_documents.php',      'icon' => 'fa-file-alt',     'label' => 'Documents'],
+    ['key' => 'reports',         'href' => 'reports.php',               'icon' => 'fa-chart-bar',    'label' => 'Reports'],
     ['key' => 'website',         'href' => 'index.php',                 'icon' => 'fa-globe',        'label' => 'View Website'],
-    ['key' => 'logout',          'href' => 'logout.php',                'icon' => 'fa-sign-out-alt', 'label' => 'Logout'],
 ];
 
 $client_nav = [

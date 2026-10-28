@@ -527,17 +527,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         /* Responsive */
         @media (max-width: 768px) {
+            header {
+                padding: 0.5rem 0;
+                position: fixed;
+                overflow: visible;
+            }
+            .header-container {
+                padding: 0 0.75rem;
+                overflow: visible;
+            }
             .nav-links, .auth-buttons {
-                display: none;
+                display: none !important;
+                position: static !important;
+                float: none !important;
             }
 
             .navbar-toggle-btn {
-                display: block;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 8px;
+                flex-shrink: 0;
+                position: static !important;
+            }
+
+            .navbar {
+                flex-wrap: nowrap !important;
+                gap: 0.5rem !important;
+                align-items: center !important;
+                position: static !important;
+                overflow: visible;
+            }
+
+            .logo {
+                font-size: 1.2rem !important;
+                flex-shrink: 1;
+                min-width: 0;
+                gap: 6px;
+                position: static !important;
+            }
+
+            .logo i {
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+
+            .logo span {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             body {
-                padding: 100px 1rem 2rem;
+                padding: 80px 0.75rem 2rem;
             }
+        }
 
             /* Content spans the full width with a clean edge gutter */
             .booking-container {
