@@ -640,7 +640,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <section class="profile-section">
         <div class="profile-container">
             <div class="profile-image">
-                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Lead Attorney">
+                <img src="bio.png" alt="Lead Attorney">
             </div>
             <div class="profile-info">
                 <h2>Robert Anderson</h2>
@@ -736,7 +736,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 </div>
             </div>
             <div class="team-card">
-                <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Attorney">
+                <img src="" alt="Attorney">
                 <div class="team-card-content">
                     <h3>James Wilson</h3>
                     <p>Corporate Counsel</p>
@@ -744,7 +744,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 </div>
             </div>
             <div class="team-card">
-                <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Attorney">
+                <img src="" alt="Attorney">
                 <div class="team-card-content">
                     <h3>Emily Chen</h3>
                     <p>Criminal Defense</p>
@@ -752,7 +752,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 </div>
             </div>
             <div class="team-card">
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Attorney">
+                <img src="" alt="Attorney">
                 <div class="team-card-content">
                     <h3>Michael Lee</h3>
                     <p>Civil Litigation</p>
@@ -829,8 +829,8 @@ if (session_status() === PHP_SESSION_NONE) {
             </div>
             <div class="footer-contact">
                 <h3>Contact Us</h3>
-                <p><i class="fas fa-map-marker-alt"></i> 123 Legal Street, New York, NY 10001</p>
-                <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                <p><i class="fas fa-map-marker-alt"></i>Ol Kalou Town CBD</p>
+                <p><i class="fas fa-phone"></i> 07123456789</p>
                 <p><i class="fas fa-envelope"></i> info@justicelawfirm.com</p>
                 <p><i class="fas fa-clock"></i> Mon-Fri: 9AM - 6PM</p>
             </div>

@@ -220,11 +220,12 @@ $unreadNotifications = getRow(
                 <?php if(!empty($appointments)): ?>
                     <table class="appointments-table table">
                         <thead>
-                             <tr><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th><th>Continuation</th></tr>
+                             <tr><th>ID</th><th>Case Type</th><th>Date</th><th>Time</th><th>Message</th><th>Status</th><th>Continuation</th></tr>
                         </thead>
                         <tbody>
                             <?php foreach($appointments as $apt): ?>
                                 <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $apt['id']; ?>'">
+                                    <td style="font-weight: 600; color: var(--primary);">#<?php echo $apt['id']; ?></td>
                                     <td><?php echo htmlspecialchars($apt['case_type']); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($apt['date'])); ?></td>
 <td><?php echo date('h:i A', strtotime($apt['time'])); ?></td>

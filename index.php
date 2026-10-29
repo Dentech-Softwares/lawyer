@@ -852,7 +852,7 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             <h1>Expert Legal Solutions for <span>Your Peace of Mind</span></h1>
             <p>With over 20 years of experience, we provide top-tier legal representation across all practice areas. Your justice is our priority.</p>
             <div class="hero-buttons">
-                <a href="book_appointment.php" class="btn btn-primary btn-large">
+                <a href="login.php" class="btn btn-primary btn-large">
                     <i class="fas fa-calendar-check"></i> Book Appointment
                 </a>
                 <a href="services.php" class="btn btn-outline btn-large">
@@ -1028,8 +1028,8 @@ $completedCases = getRow("SELECT COUNT(*) as count FROM appointments WHERE statu
             </div>
             <div class="footer-contact">
                 <h3>Contact Us</h3>
-                <p><i class="fas fa-map-marker-alt"></i> 123 Legal Street, New York, NY 10001</p>
-                <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                <p><i class="fas fa-map-marker-alt"></i> Ol Kalou Town CBD</p>
+                <p><i class="fas fa-phone"></i> 0712345678</p>
                 <p><i class="fas fa-envelope"></i> info@justicelawfirm.com</p>
                 <p><i class="fas fa-clock"></i> Mon-Fri: 9AM - 6PM</p>
             </div>

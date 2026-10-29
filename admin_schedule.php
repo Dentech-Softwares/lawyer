@@ -292,10 +292,7 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
         <?php include 'admin_header.php'; ?>
 
         <!-- Page title sits below the header card, not inside the navbar -->
-        <div class="page-title">
-            <h1><i class="fas fa-clock" style="color: var(--warning); font-size: 1.3rem;"></i> Continuations</h1>
-        </div>
-
+        
         <?php if($success): ?>
             <div class="alert alert-success">
                 <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
@@ -350,7 +347,7 @@ $pendingAppointmentsCount = getRow("SELECT COUNT(*) as count FROM appointments W
                                             Yes
                                         </span>
                                     <?php else: ?>
-                                        <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                        <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
                                             No
                                         </span>
                                     <?php endif; ?>

@@ -32,9 +32,7 @@
 
 /* Approved / Completed - green */
 .badge-approved,
-.badge-completed,
-.status-badge.approved,
-.status-badge.completed {
+.status-badge.approved {
     background: #e6f4ea;
     color: #137333;
 }
@@ -46,4 +44,12 @@
 .status-badge.cancelled {
     background: #fce8e6;
     color: #c5221f;
+}
+
+/*completed*/
+
+.badge-completed,
+.status-badge.completed {
+    background: #e6f4ea;
+    color: #1e40af;
 }

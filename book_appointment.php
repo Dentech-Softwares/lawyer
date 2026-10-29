@@ -160,6 +160,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php if ($showClientPortal): ?>
         <link rel="stylesheet" href="assets/css/sidebar.css">
     <?php endif; ?>
+    <?php if (!$showClientPortal): ?>
+        <link rel="stylesheet" href="assets/css/unified-header.css">
+    <?php endif; ?>
     <link rel="stylesheet" href="assets/css/page-transition.css">
     <style>
         :root {
@@ -185,7 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         body {
             background: linear-gradient(135deg, var(--light-gray) 0%, #e2e8f0 100%);
             min-height: 100vh;
-            padding: 120px 2rem 2rem;
+            <?php if ($showClientPortal): ?>
+            padding: 0;
+            <?php else: ?>
+            padding: 70px 2rem 2rem;
+            <?php endif; ?>
         }
 
         /* Client portal layout: the shared sidebar owns the left gutter */
@@ -198,98 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             animation: none;
         }
 
-        /* Header */
-        header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1rem 0;
-            position: fixed;
-            left: 0;
-            right: 0;
-            top: 0;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--white);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logo i {
-            color: var(--accent);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--white);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            padding: 0.5rem 0;
-            transition: all 0.3s ease;
-        }
-
-        .nav-links a:hover {
-            color: var(--accent);
-        }
-
-        .auth-buttons {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .btn {
-            padding: 0.7rem 1.5rem;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: none;
-            font-size: 0.95rem;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--white);
-            color: var(--white);
-        }
-
-        .btn-outline:hover {
-            background: var(--white);
-            color: var(--primary);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: var(--primary);
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-        }
+        /* Header styles removed - using unified header */
 
         /* Booking Container */
         .booking-container {
@@ -360,8 +276,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .form-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 992px) {
+            .form-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 1.5rem;
+            }
         }
 
         .form-group {
@@ -471,8 +394,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .submit-btn {
-            width: 100%;
-            padding: 1.2rem;
+            width: auto;
+            max-width: 320px;
+            padding: 1.2rem 2rem;
             background: var(--accent);
             color: var(--primary);
             border: none;
@@ -485,6 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
+            margin: 0 auto;
         }
 
         .submit-btn:hover {
@@ -517,74 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             text-decoration: underline;
         }
 
-        /* Mobile Menu */
-        .navbar-toggle-btn {
-            display: none;
-            color: var(--white);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            header {
-                padding: 0.5rem 0;
-                position: fixed;
-                overflow: visible;
-            }
-            .header-container {
-                padding: 0 0.75rem;
-                overflow: visible;
-            }
-            .nav-links, .auth-buttons {
-                display: none !important;
-                position: static !important;
-                float: none !important;
-            }
-
-            .navbar-toggle-btn {
-                display: flex !important;
-                align-items: center;
-                justify-content: center;
-                width: 40px;
-                height: 40px;
-                background: rgba(255,255,255,0.1);
-                border-radius: 8px;
-                flex-shrink: 0;
-                position: static !important;
-            }
-
-            .navbar {
-                flex-wrap: nowrap !important;
-                gap: 0.5rem !important;
-                align-items: center !important;
-                position: static !important;
-                overflow: visible;
-            }
-
-            .logo {
-                font-size: 1.2rem !important;
-                flex-shrink: 1;
-                min-width: 0;
-                gap: 6px;
-                position: static !important;
-            }
-
-            .logo i {
-                font-size: 1rem;
-                flex-shrink: 0;
-            }
-
-            .logo span {
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-
-            body {
-                padding: 80px 0.75rem 2rem;
-            }
-        }
+        /* Mobile styles removed - using unified header */
 
             /* Content spans the full width with a clean edge gutter */
             .booking-container {
@@ -603,10 +461,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 padding-right: 12px;
             }
 
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
             .booking-header h1 {
                 font-size: 1.5rem;
             }
@@ -618,7 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             .time-slots {
                 grid-template-columns: repeat(3, 1fr);
             }
-        }
+        
     </style>
 </head>
 <body class="<?php echo $showClientPortal ? 'client-portal' : ''; ?>">
@@ -718,27 +572,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </label>
                             <input type="text" id="full_name" name="full_name" 
                                    value="<?php echo isset($full_name) ? htmlspecialchars($full_name) : ''; ?>"
-                                   placeholder="John Doe" required>
+                                   placeholder="Ryan Kamau" required>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="email">
-                                <i class="fas fa-envelope"></i> Email Address <span style="color: var(--gray); font-weight: normal; font-size: 0.85rem;">(Optional)</span>
-                            </label>
-                            <input type="email" id="email" name="email" 
-                                   value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>"
-                                   placeholder="john@example.com">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
                         <div class="form-group">
                             <label for="phone">
                                 <i class="fas fa-phone"></i> Phone Number
                             </label>
                             <input type="tel" id="phone" name="phone" 
                                    value="<?php echo isset($phone) ? htmlspecialchars($phone) : ''; ?>"
-                                   placeholder="+1 (555) 123-4567" required>
+                                   placeholder="0712345678" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="email">
+                                <i class="fas fa-envelope"></i> Email Address <span style="color: var(--gray); font-weight: normal; font-size: 0.85rem;">(Optional)</span>
+                            </label>
+                            <input type="email" id="email" name="email" 
+                                   value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>"
+                                   placeholder="email@example.com">
                         </div>
                         
                         <div class="form-group">
@@ -937,14 +791,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         });
 
         // Mobile menu toggle
-        const mobileMenuBtn = document.querySelector('.navbar-toggle-btn');
-        const navLinks = document.querySelector('.nav-links');
-
-        if (mobileMenuBtn && navLinks) {
-            mobileMenuBtn.addEventListener('click', () => {
-                navLinks.classList.toggle('active');
-            });
-        }
+        // Mobile menu handled by unified header drawer script
 
         // Payment Modal Logic
         const payNowBtn = document.getElementById('payNowBtn');
