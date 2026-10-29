@@ -48,6 +48,52 @@ if ($appointment['is_read'] == 0) {
     execute("UPDATE appointments SET is_read = 1 WHERE id = ?", [$id]);
 }
 
+// Handle continuation scheduling (admin only)
+if ($isAdmin && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_continuation'])) {
+    $contDate = $_POST['cont_date'] ?? '';
+    $contTime = $_POST['cont_time'] ?? '';
+
+    if (empty($contDate) || empty($contTime)) {
+        $error = 'Please select both a continuation date and time.';
+    } else {
+        $updateResult = execute(
+            "UPDATE appointments SET date = ?, time = ?, status = 'approved', is_continuation = 1 WHERE id = ?",
+            [$contDate, $contTime, $id]
+        );
+
+        if ($updateResult) {
+            // Notify the client
+            execute(
+                "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
+                [$appointment['user_id'],
+                 'Your case continuation #' . $id . ' has been scheduled for ' . date('M d, Y', strtotime($contDate)) . ' at ' . date('h:i A', strtotime($contTime)) . '.']
+            );
+
+            // Log admin notification
+            $adminRow = getRow("SELECT id FROM admin_users LIMIT 1");
+            if ($adminRow) {
+                execute(
+                    "INSERT INTO notifications (user_id, message, status) VALUES (?, ?, 'unread')",
+                    [$adminRow['id'],
+                     'Scheduled continuation for case #' . $id . ' for ' . date('M d, Y', strtotime($contDate)) . ' at ' . date('h:i A', strtotime($contTime))]
+                );
+            }
+
+            $success = 'Continuation scheduled successfully for ' . date('M d, Y', strtotime($contDate)) . ' at ' . date('h:i A', strtotime($contTime)) . '.';
+            // Refresh the appointment record so the page shows the new values
+            $appointment = getRow(
+                "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone 
+                 FROM appointments a 
+                 JOIN users u ON a.user_id = u.id 
+                 WHERE a.id = ?",
+                [$id]
+            );
+        } else {
+            $error = 'Failed to schedule continuation. Please try again.';
+        }
+    }
+}
+
 // Get notes
 $notes = $appointment['notes'] ?? '';
 
@@ -670,13 +716,15 @@ if ($isAdmin) {
                     <div class="detail-item">
                         <span class="detail-label">Date & Time</span>
                         <span class="detail-value">
-                            <?php echo date('M d, Y', strtotime($appointment['date'])); ?>
-                            <small><?php echo date('h:i A', strtotime($appointment['time'])); ?></small>
+                            <?php echo !empty($appointment['date']) ? date('M d, Y', strtotime($appointment['date'])) : 'Not scheduled'; ?>
+                            <?php if (!empty($appointment['time'])): ?>
+                                <small><?php echo date('h:i A', strtotime($appointment['time'])); ?></small>
+                            <?php endif; ?>
                         </span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Created</span>
-                        <span class="detail-value"><?php echo date('M d, Y h:i A', strtotime($appointment['created_at'])); ?></span>
+                        <span class="detail-value"><?php echo !empty($appointment['created_at']) ? date('M d, Y h:i A', strtotime($appointment['created_at'])) : 'N/A'; ?></span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Client Name</span>
@@ -718,6 +766,45 @@ if ($isAdmin) {
                             <i class="fas fa-trash"></i> Delete
                         </a>
                     </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Continuation Scheduling (Admin only) -->
+                <?php if ($isAdmin && $appointment['is_continuation']): ?>
+                <div style="border-top: 1px solid var(--light-gray); padding-top: 1.5rem; margin-top: 1.5rem;">
+                    <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;">
+                        <i class="fas fa-calendar-plus"></i> Schedule Continuation Date & Time
+                    </h3>
+                    <form method="POST" action="">
+                        <div class="detail-grid" style="margin-bottom: 1.5rem;">
+                            <div class="detail-item">
+                                <label for="cont_date" class="detail-label" style="display:block; margin-bottom:0.5rem;">
+                                    <i class="fas fa-calendar" style="color:var(--accent); margin-right:0.4rem;"></i>Continuation Date
+                                </label>
+                                <input type="date" id="cont_date" name="cont_date"
+                                       value="<?php echo !empty($appointment['date']) ? htmlspecialchars($appointment['date']) : ''; ?>"
+                                       min="<?php echo date('Y-m-d'); ?>" required
+                                       style="width:100%; padding:0.7rem; border:2px solid var(--light-gray); border-radius:8px; font-size:0.95rem;">
+                            </div>
+                            <div class="detail-item">
+                                <label for="cont_time" class="detail-label" style="display:block; margin-bottom:0.5rem;">
+                                    <i class="fas fa-clock" style="color:var(--accent); margin-right:0.4rem;"></i>Continuation Time
+                                </label>
+                                <input type="time" id="cont_time" name="cont_time"
+                                       value="<?php echo !empty($appointment['time']) ? htmlspecialchars($appointment['time']) : ''; ?>"
+                                       required
+                                       style="width:100%; padding:0.7rem; border:2px solid var(--light-gray); border-radius:8px; font-size:0.95rem;">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" name="schedule_continuation" class="btn btn-success">
+                                <i class="fas fa-calendar-check"></i> Schedule Continuation
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('cont_date').value=''; document.getElementById('cont_time').value='';">
+                                <i class="fas fa-times"></i> Clear
+                            </button>
+                        </div>
+                    </form>
                 </div>
                 <?php endif; ?>
             </div>

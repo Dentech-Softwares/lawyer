@@ -387,18 +387,18 @@ foreach ($timelineRaw as $row) {
         </div>
         
         <div class="filter-card">
-            <form method="GET" action="" class="filter-form">
+            <form method="GET" action="" class="filter-form" id="filterForm">
                 <div class="form-group">
                     <label>Start Date</label>
-                    <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>">
+                    <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>" onchange="applyFilters()">
                 </div>
                 <div class="form-group">
                     <label>End Date</label>
-                    <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>">
+                    <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>" onchange="applyFilters()">
                 </div>
                 <div class="form-group">
                     <label>Status</label>
-                    <select name="status">
+                    <select name="status" onchange="applyFilters()">
                         <option value="">All Status</option>
                         <option value="pending" <?php echo $status === 'pending' ? 'selected' : ''; ?>>Pending</option>
                         <option value="approved" <?php echo $status === 'approved' ? 'selected' : ''; ?>>Approved</option>
@@ -407,15 +407,17 @@ foreach ($timelineRaw as $row) {
                         <option value="rejected" <?php echo $status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Apply Filters</button>
             </form>
         </div>
-        <div class="reports-table-container">
+        <div class="reports-table-container" id="table-container">
             <div class="table-header">
                 <h2><i class="fas fa-list"></i> Appointment Reports</h2>
                 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                     <a href="export_reports.php?type=appointments&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&status=<?php echo urlencode($status); ?>" class="btn-filter" style="text-decoration: none;">
-                        <i class="fas fa-download"></i>  CSV
+                        <i class="fas fa-file-csv"></i> CSV
+                    </a>
+                    <a href="export_reports_pdf.php?start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&status=<?php echo urlencode($status); ?>" class="btn-filter" style="text-decoration: none;">
+                        <i class="fas fa-file-pdf"></i> PDF
                     </a>
                 </div>
             </div>
@@ -659,5 +661,22 @@ foreach ($timelineRaw as $row) {
         });
         });
     </script>
+<script>
+function applyFilters() {
+    const form = document.getElementById('filterForm');
+    const params = new URLSearchParams(new FormData(form));
+    const url = window.location.pathname + '?' + params.toString();
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newContainer = doc.getElementById('table-container');
+            if (newContainer) {
+                document.getElementById('table-container').innerHTML = newContainer.innerHTML;
+            }
+            history.pushState({}, '', url);
+        });
+}
+</script>
 </body>
 </html>

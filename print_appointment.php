@@ -89,26 +89,26 @@ $notes = $appointment['notes'] ?? '';
         .print-container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1.2rem 1.5rem;
             color: var(--dark);
         }
 
         .print-header {
             text-align: center;
             border-bottom: 3px solid var(--accent);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1rem;
         }
 
         .print-header .logo {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.8rem;
-            font-size: 1.8rem;
+            gap: 0.6rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--primary);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .print-header .logo i {
@@ -117,28 +117,28 @@ $notes = $appointment['notes'] ?? '';
 
         .print-header h1 {
             color: var(--primary);
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.6rem;
+            margin-bottom: 0.25rem;
         }
 
         .print-header p {
             color: var(--secondary);
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .detail-section {
-            margin-bottom: 2rem;
+            margin-bottom: 0.8rem;
         }
 
         .detail-section h2 {
             color: var(--primary);
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.3rem;
             border-bottom: 2px solid var(--accent);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .detail-section h2 i {
@@ -148,32 +148,35 @@ $notes = $appointment['notes'] ?? '';
         .detail-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+            gap: 0.6rem 1.2rem;
         }
 
         .detail-item {
             display: flex;
             flex-direction: column;
+            padding: 0.4rem 0;
         }
 
         .detail-label {
             color: var(--gray);
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.15rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .detail-value {
             color: var(--dark);
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 500;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 0.4rem 1rem;
+            padding: 0.25rem 0.8rem;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 600;
             white-space: nowrap;
         }
@@ -205,12 +208,12 @@ $notes = $appointment['notes'] ?? '';
         .notes-box {
             background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%);
             border: 2px solid var(--accent);
-            border-radius: 12px;
-            padding: 1.5rem;
-            min-height: 120px;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            min-height: 60px;
             white-space: pre-wrap;
-            font-size: 1rem;
-            line-height: 1.8;
+            font-size: 0.9rem;
+            line-height: 1.6;
             color: var(--dark);
             position: relative;
         }
@@ -219,33 +222,33 @@ $notes = $appointment['notes'] ?? '';
             content: '\f040';
             font-family: 'Font Awesome 6 Free';
             font-weight: 900;
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             color: rgba(212, 175, 55, 0.15);
             position: absolute;
-            top: 1rem;
-            right: 1rem;
+            top: 0.5rem;
+            right: 0.8rem;
         }
 
         .no-notes {
             background: var(--light-gray);
             border: 2px dashed var(--gray);
-            border-radius: 12px;
+            border-radius: 8px;
             color: var(--gray);
             font-style: italic;
             text-align: center;
-            padding: 2rem;
-            font-size: 1rem;
+            padding: 1rem;
+            font-size: 0.9rem;
         }
 
         .message-box {
             background: #f7fafc;
             border: 1px solid var(--light-gray);
-            border-radius: 12px;
-            padding: 1.5rem;
-            min-height: 60px;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            min-height: 40px;
             white-space: pre-wrap;
-            font-size: 1rem;
-            line-height: 1.8;
+            font-size: 0.9rem;
+            line-height: 1.6;
             color: var(--dark);
         }
 
@@ -257,15 +260,92 @@ $notes = $appointment['notes'] ?? '';
 
         @media print {
             .print-actions {
-                display: none;
+                display: none !important;
             }
 
             body {
-                background: var(--white);
+                background: var(--white) !important;
+                margin: 0;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .print-container {
-                padding: 1rem;
+                padding: 0.8rem 1rem !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+
+            .print-header {
+                margin-bottom: 0.8rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+
+            .print-header h1 {
+                font-size: 1.4rem !important;
+            }
+
+            .print-header .logo {
+                font-size: 1.3rem !important;
+            }
+
+            .detail-section {
+                margin-bottom: 0.6rem !important;
+                page-break-inside: avoid;
+            }
+
+            .detail-section h2 {
+                font-size: 1rem !important;
+                margin-bottom: 0.4rem !important;
+            }
+
+            /* Force the 2-column grid to stay side-by-side during print.
+               Browsers sometimes reset grid/flex on print; re-assert explicitly. */
+            .detail-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.4rem 1.2rem !important;
+                width: 100% !important;
+            }
+
+            .detail-item {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 50% !important;
+                padding: 0.2rem 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            .detail-label {
+                font-size: 0.72rem !important;
+            }
+
+            .detail-value {
+                font-size: 0.85rem !important;
+            }
+
+            .notes-box,
+            .message-box,
+            .no-notes {
+                font-size: 0.85rem !important;
+                padding: 0.6rem 0.8rem !important;
+                page-break-inside: avoid;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            .status-badge {
+                font-size: 0.72rem !important;
+                padding: 0.2rem 0.6rem !important;
+            }
+
+            .print-footer {
+                page-break-before: auto;
+            }
+
+            @page {
+                margin: 1.2cm 1.5cm;
             }
         }
     </style>
@@ -296,6 +376,14 @@ $notes = $appointment['notes'] ?? '';
                     <span class="detail-label">Phone Number</span>
                     <span class="detail-value"><?php echo htmlspecialchars($clientPhone); ?></span>
                 </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">
+                        <span class="status-badge <?php echo strtolower($appointment['status']); ?>">
+                            <?php echo $status; ?>
+                        </span>
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -315,12 +403,8 @@ $notes = $appointment['notes'] ?? '';
                     <span class="detail-value"><?php echo $time; ?></span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value">
-                        <span class="status-badge <?php echo strtolower($appointment['status']); ?>">
-                            <?php echo $status; ?>
-                        </span>
-                    </span>
+                    <span class="detail-label">Appointment ID</span>
+                    <span class="detail-value">#<?php echo $appointment['id']; ?></span>
                 </div>
             </div>
         </div>
@@ -339,14 +423,14 @@ $notes = $appointment['notes'] ?? '';
             <?php endif; ?>
         </div>
 
-        <div class="detail-section" style="margin-top: 3rem; text-align: center;">
-            <p style="color: var(--gray); font-size: 0.9rem;">
+        <div class="detail-section print-footer" style="margin-top: 1.5rem; text-align: center;">
+            <p style="color: var(--gray); font-size: 0.85rem;">
                 &copy; <?php echo date('Y'); ?> Justice Law Firm. All rights reserved.
             </p>
         </div>
 
-        <div class="print-actions" style="margin-top: 2rem; text-align: center;">
-            <button onclick="window.print()" style="padding: 0.8rem 2rem; background: var(--accent); color: var(--primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem;">
+        <div class="print-actions" style="margin-top: 1.5rem; text-align: center;">
+            <button onclick="window.print()" style="padding: 0.7rem 1.8rem; background: var(--accent); color: var(--primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
                 <i class="fas fa-print"></i> Print This Page
             </button>
         </div>
