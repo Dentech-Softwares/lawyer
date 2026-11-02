@@ -29,6 +29,7 @@
         { selector: '[data-auto-update]' },
         { selector: '.stats-grid' },
         { selector: '.stats-cards-container' },
+        { selector: '.metrics-grid' },
         { selector: '.notification-badge', removeIfMissing: true },
         { selector: '.notification-list' },
         { selector: '.sidebar-nav .badge', removeIfMissing: true },

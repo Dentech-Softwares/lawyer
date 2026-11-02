@@ -815,6 +815,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             });
         }
 
+        // Holds the CheckoutRequestID returned by Safaricom so the polling
+        // loop knows which transaction to check.
+        let activeCheckoutRequestId = null;
+        let paymentInterval = null;
+
         if (confirmPayment) {
             confirmPayment.addEventListener('click', function() {
                 const phone = document.getElementById('mpesaPhone').value.replace(/\D/g, '');
@@ -847,14 +852,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status === 'success') {
+                    if (data.status === 'success' && data.checkout_request_id) {
+                        // Store the CheckoutRequestID so polling can begin
+                        activeCheckoutRequestId = data.checkout_request_id;
+
                         paymentStatus.className = 'alert alert-success';
                         paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
                         payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
                         payNowBtn.disabled = true;
+
+                        // Start polling every 3 seconds
+                        startPaymentPolling();
                     } else {
                         paymentStatus.className = 'alert alert-danger';
-                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.message || 'Payment initiation failed');
                         confirmPayment.disabled = false;
                         confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
                     }
@@ -868,7 +879,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             });
         }
 
-        // Close modal when clicking outside
+        // Poll check_status.php every 3 seconds until the payment completes
+        function startPaymentPolling() {
+            if (paymentInterval) {
+                clearInterval(paymentInterval);
+            }
+
+            paymentInterval = setInterval(function() {
+                if (!activeCheckoutRequestId) return;
+
+                fetch('check_status.php?checkout_id=' + encodeURIComponent(activeCheckoutRequestId))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'Completed') {
+                            clearInterval(paymentInterval);
+                            paymentInterval = null;
+
+                            paymentStatus.className = 'alert alert-success';
+                            paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> Payment confirmed! Redirecting...';
+
+                            // Redirect to the success page with the receipt number
+                            const receipt = data.receipt || '';
+                            window.location.href = 'success_page.php?receipt=' + encodeURIComponent(receipt);
+                        } else if (data.status === 'Failed') {
+                            clearInterval(paymentInterval);
+                            paymentInterval = null;
+
+                            paymentStatus.className = 'alert alert-danger';
+                            paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Payment failed. Please try again.';
+                            confirmPayment.disabled = false;
+                            confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                        }
+                    })
+                    .catch(err => console.log('Payment check failed:', err));
+            }, 3000);
+        }
+
+// Close modal when clicking outside
         window.addEventListener('click', function(e) {
             if (e.target === paymentModal) {
                 paymentModal.style.display = 'none';

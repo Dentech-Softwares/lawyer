@@ -544,7 +544,7 @@ if (isset($_GET['mark_read'])) {
                                                   Yes
                                               </span>
                                           <?php else: ?>
-                                              <span class="status-badge" style="background: var(--light-gray); color: var(--gray);">
+                                              <span class="status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--accent); border: 1px solid var(--accent);">
                                                   No
                                               </span>
                                           <?php endif; ?>

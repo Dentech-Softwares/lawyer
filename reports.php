@@ -305,7 +305,8 @@ foreach ($timelineRaw as $row) {
         .reports-table th { padding: 1rem 1.5rem; text-align: left; color: var(--primary); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .reports-table td { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--dark); font-size: 0.95rem; }
         .reports-table tbody tr:nth-child(even) { background: #f9fafb; }
-        .reports-table tbody tr:hover { background: rgba(245, 247, 250, 0.8); }
+        .reports-table tbody tr:hover { background: rgba(30, 66, 115, 0.05); }
+        .reports-table tbody tr.appointment-row { cursor: pointer; }
         .reports-table tbody tr:last-child td { border-bottom: none; }
         .status-badge { padding: 0.35rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
         .status-pending { background: #fef3c7; color: #92400e; }
@@ -438,13 +439,13 @@ foreach ($timelineRaw as $row) {
                         <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--gray);">No records found</td></tr>
                     <?php else: ?>
                         <?php foreach ($reports as $report): ?>
-                            <tr>
+                            <tr class="appointment-row" onclick="window.location.href='appointment_details.php?id=<?php echo $report['id']; ?>'" style="cursor: pointer;">
                                 <td>#<?php echo $report['id']; ?></td>
                                 <td><?php echo htmlspecialchars($report['client_name'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($report['case_type'] ?? 'N/A'); ?></td>
                                 <td><?php echo !empty($report['date']) ? date('M d, Y', strtotime($report['date'])) : ($report['appointment_date'] ?? ''); ?></td>
                                 <td><?php echo !empty($report['time']) ? date('h:i A', strtotime($report['time'])) : ($report['appointment_time'] ?? ''); ?></td>
-                                <td><span class="status-badge <?php echo htmlspecialchars($report['status']); ?>"><?php echo ucfirst($report['status']); ?></span></td>
+                                <td><span class="status-badge <?php echo htmlspecialchars($report['status']); ?>" onclick="event.stopPropagation();"><?php echo ucfirst($report['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($report['created_at'])); ?></td>
                             </tr>
                         <?php endforeach; ?>
