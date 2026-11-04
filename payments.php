@@ -15,7 +15,7 @@ $start_date = $_GET['start_date'] ?? date('Y-m-01');
 $end_date = $_GET['end_date'] ?? date('Y-m-t');
 $status = $_GET['status'] ?? '';
 
-$query = "SELECT p.*, u.name as client_name FROM payments p LEFT JOIN appointments a ON p.appointment_id=a.id LEFT JOIN users u ON a.user_id=u.id WHERE 1=1";
+$query = "SELECT p.*, a.id as case_id, a.case_type, u.name as client_name FROM payments p LEFT JOIN appointments a ON p.appointment_id=a.id LEFT JOIN users u ON a.user_id=u.id WHERE 1=1";
 $params=[]; $types='';
 if (!empty($start_date)) { $query .= " AND DATE(p.created_at) >= ?"; $params[]=$start_date; $types.='s'; }
 if (!empty($end_date)) { $query .= " AND DATE(p.created_at) <= ?"; $params[]=$end_date; $types.='s'; }
@@ -84,11 +84,16 @@ foreach($rows as $r){
         .table-header h2 { color: var(--primary); font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
         .reports-table { width: 100%; border-collapse: collapse; }
         .reports-table thead { background: var(--light-gray); }
-        .reports-table th { padding: 1rem 1.5rem; text-align: left; color: var(--primary); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .reports-table td { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--dark); font-size: 0.95rem; }
-        .reports-table tbody tr:nth-child(even) { background: #f9fafb; }
-        .reports-table tbody tr:hover { background: rgba(245, 247, 250, 0.8); }
+.reports-table th { padding: 1rem 1.5rem; text-align: left; color: var(--primary); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.reports-table td { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--dark); font-size: 0.95rem; white-space: nowrap; }
+.reports-table tbody tr:nth-child(even) { background: #f9fafb; }
+.reports-table tbody tr:hover { background: rgba(49, 130, 206, 0.08); cursor: pointer; }
         .reports-table tbody tr:last-child td { border-bottom: none; }
+        .status-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+        .status-badge.pending { background: rgba(214, 158, 46, 0.15); color: var(--warning); border: 1px solid rgba(214, 158, 46, 0.3); }
+        .status-badge.approved { background: rgba(56, 161, 105, 0.15); color: var(--success); border: 1px solid rgba(56, 161, 105, 0.3); }
+        .status-badge.rejected { background: rgba(229, 62, 62, 0.15); color: var(--danger); border: 1px solid rgba(229, 62, 62, 0.3); }
+        .status-badge.completed { background: rgba(49, 130, 206, 0.15); color: var(--info); border: 1px solid rgba(49, 130, 206, 0.3); }
         @media (max-width: 768px) { .reports-table { display: block; overflow-x: auto; } }
     </style>
 </head>
@@ -131,33 +136,99 @@ foreach($rows as $r){
                 </div>
             </div>
             <table class="reports-table">
-                <thead><tr><th>ID</th><th>Client</th><th>Amount</th><th>Method</th><th>Transaction Code</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Case ID</th><th>Client</th><th>Amount</th><th>Method</th><th>Receipt No</th><th>Status</th><th>Date</th></tr></thead>
                 <tbody>
                 <?php foreach($rows as $r): ?>
-                    <tr>
-                        <td>#<?php echo $r['id']; ?></td>
+                    <tr data-case-id="<?php echo $r['case_id']; ?>" data-payment-id="<?php echo $r['id']; ?>" onclick="viewPaymentDetails('<?php echo $r['case_id']; ?>')">
+                        <td>#<?php echo $r['case_id']; ?></td>
                         <td><?php echo htmlspecialchars($r['client_name']??'N/A'); ?></td>
                         <td><?php echo $r['amount']; ?></td>
                         <td>M-Pesa</td>
-                        <td><?php echo htmlspecialchars($r['mpesa_receipt_number']??$r['checkout_request_id']); ?></td>
-                        <td><?php echo $r['status']; ?></td>
-                        <td><?php echo $r['created_at']; ?></td>
                         <td>
-                            <?php if($r['status']==='PENDING'): ?>
-                                <a class="btn-filter" style="padding:0.4rem 0.8rem;font-size:0.85rem;text-decoration:none;" href="?verify=<?php echo $r['id']; ?>">Verify</a>
-                                <a class="btn-filter" style="padding:0.4rem 0.8rem;font-size:0.85rem;text-decoration:none;background:linear-gradient(135deg,#e53e3e,#c53030);" href="?reject=<?php echo $r['id']; ?>">Reject</a>
+                            <?php if (!empty($r['mpesa_receipt_number'])): ?>
+                                <?php echo htmlspecialchars($r['mpesa_receipt_number']); ?>
+                            <?php else: ?>
+                                <span style="color: var(--gray); font-style: italic;">Pending</span>
                             <?php endif; ?>
                         </td>
+                        <td>
+                            <?php
+                            $rawStatus = $r['status'] ?? 'PENDING';
+                            $statusClass = strtolower($rawStatus) === 'failed' ? 'rejected' : strtolower($rawStatus);
+                            $statusLabel = strtolower($rawStatus) === 'failed' ? 'Rejected' : ucfirst(strtolower($rawStatus));
+                            ?>
+                            <span class="status-badge <?php echo $statusClass; ?>"
+                                  style="text-transform: none; font-size: 0.75rem; padding: 0.3rem 0.7rem; border-radius: 20px; font-weight: 600; display: inline-block;">
+                                <?php echo $statusLabel; ?>
+                            </span>
+                        </td>
+                        <td><?php echo $r['created_at']; ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- Payment Details Modal -->
+    <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:2rem; max-width:600px; width:90%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:2px solid var(--light-gray); padding-bottom:1rem;">
+                <h2 style="color:var(--primary); margin:0;"><i class="fas fa-receipt"></i> Payment Details</h2>
+                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--gray);"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="paymentModalContent">
+                <div style="text-align:center; padding:2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--info);"></i>
+                    <p style="margin-top:1rem;">Loading payment details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/page-transition.js"></script>
     <script src="assets/js/auto-update.js"></script>
     <script>
-    function applyFilters(){const form=document.getElementById('filterForm');const params=new URLSearchParams(new FormData(form));const url=window.location.pathname+'?'+params.toString();fetch(url).then(r=>r.text()).then(html=>{const d=new DOMParser().parseFromString(html,'text/html');const n=d.getElementById('table-container');if(n)document.getElementById('table-container').innerHTML=n.innerHTML;history.pushState({},'',url);});}
+    function applyFilters(){
+        const form = document.getElementById('filterForm');
+        const params = new URLSearchParams(new FormData(form));
+        const url = window.location.pathname + '?' + params.toString();
+        fetch(url)
+            .then(r => r.text())
+            .then(html => {
+                const d = new DOMParser().parseFromString(html, 'text/html');
+                const n = d.getElementById('table-container');
+                if (n) document.getElementById('table-container').innerHTML = n.innerHTML;
+                history.pushState({}, '', url);
+            });
+    }
+
+    function viewPaymentDetails(caseId) {
+        const modal = document.getElementById('paymentModal');
+        const content = document.getElementById('paymentModalContent');
+        
+        modal.style.display = 'flex';
+        
+        fetch('payment_details.php?case_id=' + caseId)
+            .then(r => r.text())
+            .then(html => {
+                content.innerHTML = html;
+            })
+            .catch(err => {
+                content.innerHTML = '<p style="color:var(--danger); text-align:center; padding:2rem;">Failed to load payment details.</p>';
+            });
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+    }
+
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('paymentModal');
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
     </script>
 </body>
 </html>

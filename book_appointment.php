@@ -138,7 +138,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $smsMsg = "Dear {$full_name}, your appointment for {$case_type} on {$date} at {$time} has been submitted. We will review it shortly. - Justice Law Firm";
                     sendSMS($phone, $smsMsg);
                 }
-                
+
+                // Auto-create a pending payment record so the client can pay later
+                $paymentAmount = 500.00;
+                $paymentPhone = $phone ?? '';
+                execute(
+                    "INSERT INTO payments (appointment_id, amount, phone_number, payment_method, status, created_at) VALUES (?, ?, ?, 'mpesa', 'PENDING', NOW())",
+                    [$appointmentId, $paymentAmount, $paymentPhone]
+                );
+
                 $_SESSION['success'] = 'Appointment booked successfully! Proceed to payment.';
                 $_SESSION['booking_appointment_id'] = $appointmentId;
                 header("Location: book_appointment.php?appointment_id=" . $appointmentId);
@@ -545,13 +553,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <input type="tel" id="mpesaPhone" placeholder="2547XXXXXXXX"
                                        style="width:100%; padding:0.8rem; border:2px solid var(--light-gray); border-radius:8px; font-size:1rem; text-align:center;">
                             </div>
-                            <div id="paymentStatus" style="display:none; text-align:center; padding:1rem; margin-bottom:1rem; border-radius:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7;"></div>
-                            <div style="display:flex; gap:1rem;">
-                                <button class="btn btn-back" id="cancelPayment" style="flex:1;">
-                                    <i class="fas fa-times"></i> Cancel
+                            <div id="payment-alert" style="display:none; align-items:center; padding:0.85rem 1rem; margin-bottom:1rem; border-radius:8px; font-size:0.85rem; font-weight:500;">
+                                <i class="fas fa-check-circle me-2" style="font-size:1rem;"></i>
+                                <span id="payment-alert-text"></span>
+                            </div>
+                            <div style="display:flex; justify-content:center; gap:0.75rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--light-gray);">
+                                <button type="button" id="cancelPayment" style="padding:0.7rem 1.5rem; border:2px solid var(--light-gray); background:var(--white); color:var(--gray); border-radius:50px; font-weight:600; font-size:0.9rem; cursor:pointer; transition:all 0.3s ease;">
+                                    <i class="fas fa-times me-1"></i> Cancel
                                 </button>
-                                <button class="btn btn-primary" id="confirmPayment" style="flex:1;">
-                                    <i class="fas fa-check"></i> Pay
+                                <button type="button" id="confirmPayment" style="padding:0.7rem 1.5rem; background:linear-gradient(135deg, var(--success) 0%, #2f855a 100%); color:var(--white); border:none; border-radius:50px; font-weight:600; font-size:0.9rem; cursor:pointer; transition:all 0.3s ease; box-shadow:0 4px 12px rgba(56,161,105,0.3);">
+<i class="fas fa-money-bill-wave me-1"></i> Pay
                                 </button>
                             </div>
                         </div>
@@ -824,9 +835,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             confirmPayment.addEventListener('click', function() {
                 const phone = document.getElementById('mpesaPhone').value.replace(/\D/g, '');
                 if (!phone || phone.length < 9) {
-                    paymentStatus.style.display = 'block';
-                    paymentStatus.className = 'alert alert-danger';
-                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number';
+                    const alertBox = document.getElementById('payment-alert');
+                    alertBox.style.display = 'flex';
+                    alertBox.style.backgroundColor = '#f8d7da';
+                    alertBox.style.color = '#721c24';
+                    alertBox.style.border = '1px solid #f5c6cb';
+                    alertBox.querySelector('i').style.color = '#721c24';
+                    alertBox.querySelector('span').innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid M-Pesa phone number';
                     return;
                 }
 
@@ -838,10 +853,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 confirmPayment.disabled = true;
-                confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending STK Push...';
-                paymentStatus.style.display = 'block';
-                paymentStatus.className = 'alert';
-                paymentStatus.innerHTML = '<i class="fas fa-info-circle"></i> Sending STK Push...';
+                confirmPayment.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sending...';
+
+                const alertBox = document.getElementById('payment-alert');
+                alertBox.style.display = 'flex';
+                alertBox.style.backgroundColor = '#e8f4fd';
+                alertBox.style.color = '#1a4a7a';
+                alertBox.style.border = '1px solid #b3d4fc';
+                alertBox.querySelector('i').style.color = '#3182ce';
+                alertBox.querySelector('span').innerHTML = '<i class="fas fa-info-circle me-1"></i> Sending STK Push to ' + formattedPhone + '...';
 
                 fetch('mpesa_pay.php', {
                     method: 'POST',
@@ -853,28 +873,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success' && data.checkout_request_id) {
-                        // Store the CheckoutRequestID so polling can begin
                         activeCheckoutRequestId = data.checkout_request_id;
 
-                        paymentStatus.className = 'alert alert-success';
-                        paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message + '<br><small>STK Push sent. Please complete payment on your phone.</small>';
+                        const alertBox = document.getElementById('payment-alert');
+                        alertBox.style.display = 'flex';
+                        alertBox.style.backgroundColor = '#d4edda';
+                        alertBox.style.color = '#155724';
+                        alertBox.style.border = '1px solid #c3e6cb';
+                        alertBox.querySelector('i').style.color = '#38a169';
+                        alertBox.querySelector('span').innerHTML = '<i class="fas fa-check-circle me-1"></i> STK Push sent! Please check your phone and enter your M-Pesa PIN to complete the payment.';
+
                         payNowBtn.innerHTML = '<i class="fas fa-clock"></i> Payment Pending...';
                         payNowBtn.disabled = true;
 
-                        // Start polling every 3 seconds
                         startPaymentPolling();
                     } else {
-                        paymentStatus.className = 'alert alert-danger';
-                        paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.message || 'Payment initiation failed');
+                        const alertBox = document.getElementById('payment-alert');
+                        alertBox.style.display = 'flex';
+                        alertBox.style.backgroundColor = '#f8d7da';
+                        alertBox.style.color = '#721c24';
+                        alertBox.style.border = '1px solid #f5c6cb';
+                        alertBox.querySelector('i').style.color = '#e53e3e';
+                        alertBox.querySelector('span').innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> ' + (data.message || 'Payment initiation failed');
                         confirmPayment.disabled = false;
-                        confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                        confirmPayment.innerHTML = '<i class="fas fa-money-bill-wave me-1"></i> Pay';
                     }
                 })
                 .catch(error => {
-                    paymentStatus.className = 'alert alert-danger';
-                    paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+                    const alertBox = document.getElementById('payment-alert');
+                    alertBox.style.display = 'flex';
+                    alertBox.style.backgroundColor = '#f8d7da';
+                    alertBox.style.color = '#721c24';
+                    alertBox.style.border = '1px solid #f5c6cb';
+                    alertBox.querySelector('i').style.color = '#e53e3e';
+                    alertBox.querySelector('span').innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Error: ' + error.message;
                     confirmPayment.disabled = false;
-                    confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                    confirmPayment.innerHTML = '<i class="fas fa-money-bill-wave me-1"></i> Pay';
                 });
             });
         }
@@ -895,20 +929,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             clearInterval(paymentInterval);
                             paymentInterval = null;
 
-                            paymentStatus.className = 'alert alert-success';
-                            paymentStatus.innerHTML = '<i class="fas fa-check-circle"></i> Payment confirmed! Redirecting...';
+                            const alertBox = document.getElementById('payment-alert');
+                            alertBox.style.display = 'flex';
+                            alertBox.style.backgroundColor = '#d4edda';
+                            alertBox.style.color = '#155724';
+                            alertBox.style.border = '1px solid #c3e6cb';
+                            alertBox.querySelector('i').style.color = '#38a169';
+                            alertBox.querySelector('span').innerHTML = '<i class="fas fa-check-circle me-1"></i> Payment confirmed! Redirecting to success page...';
 
                             // Redirect to the success page with the receipt number
                             const receipt = data.receipt || '';
-                            window.location.href = 'success_page.php?receipt=' + encodeURIComponent(receipt);
+                            setTimeout(function() {
+                                window.location.href = 'success_page.php?receipt=' + encodeURIComponent(receipt);
+                            }, 1500);
                         } else if (data.status === 'Failed') {
                             clearInterval(paymentInterval);
                             paymentInterval = null;
 
-                            paymentStatus.className = 'alert alert-danger';
-                            paymentStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Payment failed. Please try again.';
+                            const alertBox = document.getElementById('payment-alert');
+                            alertBox.style.display = 'flex';
+                            alertBox.style.backgroundColor = '#f8d7da';
+                            alertBox.style.color = '#721c24';
+                            alertBox.style.border = '1px solid #f5c6cb';
+                            alertBox.querySelector('i').style.color = '#e53e3e';
+                            alertBox.querySelector('span').innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Payment failed or was cancelled. Please try again.';
                             confirmPayment.disabled = false;
-                            confirmPayment.innerHTML = '<i class="fas fa-check"></i> Pay';
+                            confirmPayment.innerHTML = '<i class="fas fa-money-bill-wave me-1"></i> Pay';
                         }
                     })
                     .catch(err => console.log('Payment check failed:', err));

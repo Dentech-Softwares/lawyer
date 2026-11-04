@@ -27,13 +27,16 @@ if (!isset($_GET['id'])) {
 }
 $id = (int)$_GET['id'];
 
-// Get appointment with client info
+// Get appointment with client info and payment status
 $whereClause = $isAdmin ? "" : "AND a.user_id = " . (int)$_SESSION['user_id'];
 $appointment = getRow(
-    "SELECT a.*, u.name as client_name, u.email as client_email, u.phone as client_phone 
+    "SELECT a.*, p.status as payment_status, p.mpesa_receipt_number, p.amount as payment_amount, p.payment_method,
+            u.name as client_name, u.email as client_email, u.phone as client_phone 
      FROM appointments a 
+     LEFT JOIN payments p ON a.id = p.appointment_id AND p.status = 'COMPLETED'
      JOIN users u ON a.user_id = u.id 
-     WHERE a.id = ? $whereClause",
+     WHERE a.id = ? $whereClause
+     ORDER BY p.id DESC LIMIT 1",
     [$id]
 );
 
@@ -737,6 +740,30 @@ if ($isAdmin) {
                     <div class="detail-item">
                         <span class="detail-label">Client Phone</span>
                         <span class="detail-value"><?php echo htmlspecialchars($appointment['client_phone'] ?? 'N/A'); ?></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Payment Status</span>
+                        <span class="detail-value" style="display:block;">
+                            <?php if (!empty($appointment['payment_status']) && $appointment['payment_status'] === 'COMPLETED'): ?>
+                                <div style="margin-bottom: 6px;">
+                                    <span class="status-badge approved" style="background: rgba(56, 161, 105, 0.15); color: var(--success); border: 1px solid rgba(56, 161, 105, 0.3); padding: 6px 16px; border-radius: 20px; font-weight: 600; display: inline-block;">Paid</span>
+                                </div>
+                                <?php if (!empty($appointment['mpesa_receipt_number'])): ?>
+                                    <div style="margin-top: 6px; font-size: 0.85rem; color: var(--gray);">
+                                        Receipt: <strong style="color: var(--dark);"><?php echo htmlspecialchars($appointment['mpesa_receipt_number']); ?></strong>
+                                    </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div style="margin-bottom: 8px;">
+                                    <span class="status-badge pending" style="background: rgba(229, 62, 62, 0.15); color: var(--danger); border: 1px solid rgba(229, 62, 62, 0.3); padding: 6px 16px; border-radius: 20px; font-weight: 600; display: inline-block;">Unpaid</span>
+                                </div>
+                                <div>
+                                    <a href="book_appointment.php?appointment_id=<?php echo $appointment['id']; ?>" class="btn btn-sm btn-primary px-3 py-1 shadow-sm" style="font-size: 0.8rem; font-weight: 600;">
+                                        <i class="fas fa-mobile-alt me-1"></i> Pay Now
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        </span>
                     </div>
                     <div class="detail-item full-width">
                         <span class="detail-label">Client Message</span>

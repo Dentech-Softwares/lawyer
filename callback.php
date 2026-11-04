@@ -40,160 +40,100 @@ if (empty($checkoutRequestID)) {
     exit;
 }
 
-// --- Ensure the payments table has the columns we rely on ---------------
-function ensureColumns() {
-    global $conn;
+// 3. Extract MpesaReceiptNumber from CallbackMetadata->Item
+$receiptNumber = '';
+$resultDesc = $callback->ResultDesc ?? '';
 
-    $required = [
-        'merchant_request_id' => "VARCHAR(255) DEFAULT NULL",
-        'mpesa_receipt_number' => "VARCHAR(100) DEFAULT NULL",
-        'transaction_time'    => "VARCHAR(50) DEFAULT NULL",
-        'result_code'          => "INT DEFAULT NULL",
-        'result_desc'          => "TEXT DEFAULT NULL",
-        'updated_at'           => "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-    ];
+if ($resultCode == 0 && isset($callback->CallbackMetadata->Item)) {
+    $items = $callback->CallbackMetadata->Item;
 
-    $existing = [];
-    $res = mysqli_query($conn, "SHOW COLUMNS FROM `payments`");
-    if ($res) {
-        while ($row = mysqli_fetch_assoc($res)) {
-            $existing[$row['Field']] = true;
-        }
+    // Ensure we have an array to iterate
+    if (!is_array($items)) {
+        $items = [$items];
     }
 
-    foreach ($required as $col => $def) {
-        if (!isset($existing[$col])) {
-            mysqli_query($conn, "ALTER TABLE `payments` ADD COLUMN `$col` $def");
-        }
-    }
+    foreach ($items as $item) {
+        $name = '';
+        $value = '';
 
-    // Ensure the appointments table has a payment_status column
-    $appCols = [];
-    $res2 = mysqli_query($conn, "SHOW COLUMNS FROM `appointments`");
-    if ($res2) {
-        while ($row = mysqli_fetch_assoc($res2)) {
-            $appCols[$row['Field']] = true;
+        // Handle both object and array formats
+        if (is_object($item)) {
+            $name = $item->Name ?? '';
+            $value = $item->Value ?? '';
+        } elseif (is_array($item)) {
+            $name = $item['Name'] ?? '';
+            $value = $item['Value'] ?? '';
         }
-    }
-    if (!isset($appCols['payment_status'])) {
-        mysqli_query($conn, "ALTER TABLE `appointments` ADD COLUMN payment_status VARCHAR(20) DEFAULT 'Unpaid' AFTER `status`");
+
+        if ($name === 'MpesaReceiptNumber') {
+            $receiptNumber = $value;
+        }
     }
 }
 
-ensureColumns();
+// Fallback for top-level receipt if present
+if (empty($receiptNumber) && isset($callback->MpesaReceiptNumber)) {
+    $receiptNumber = $callback->MpesaReceiptNumber;
+}
 
-// --- Handle the callback result ----------------------------------------
+file_put_contents(
+    'callback_debug.log',
+    date('Y-m-d H:i:s') . " - ResultCode=$resultCode CheckoutRequestID=$checkoutRequestID Receipt=$receiptNumber" . PHP_EOL,
+    FILE_APPEND
+);
+
+// 4. Update database immediately
 if ($resultCode == 0) {
-    // Payment SUCCESSFUL — extract transaction details from metadata
-    $metaData = $callback->CallbackMetadata->Item ?? [];
-    $receiptNumber = '';
-    $transactionAmount = 0;
-    $transactionTime = '';
-
-    foreach ($metaData as $item) {
-        if (isset($item->Name) && $item->Name === 'MpesaReceiptNumber') {
-            $receiptNumber = $item->Value ?? '';
-        }
-        if (isset($item->Name) && $item->Name === 'Amount') {
-            $transactionAmount = $item->Value ?? 0;
-        }
-        if (isset($item->Name) && $item->Name === 'TransactionTime') {
-            $transactionTime = $item->Value ?? '';
-        }
-    }
-
-    file_put_contents(
-        'error_log.txt',
-        date('Y-m-d H:i:s') . " - Payment SUCCESS: CheckoutRequestID=$checkoutRequestID Receipt=$receiptNumber Amount=$transactionAmount" . PHP_EOL,
-        FILE_APPEND
-    );
-
-    try {
-        // Set to 'PENDING' so the admin can still verify/reject.
-        // The client's polling treats 'PENDING' + receipt number as "paid".
-        $stmt = $conn->prepare(
-            "UPDATE payments
-               SET status = 'PENDING',
-                   mpesa_receipt_number = ?,
-                   amount = ?,
-                   transaction_time = ?,
-                   result_code = ?,
-                   result_desc = ?,
-                   updated_at = NOW()
-             WHERE checkout_request_id = ?"
-        );
-        if ($stmt) {
-            $stmt->bind_param(
-                "ssdiss",
-                $receiptNumber,
-                $transactionAmount,
-                $transactionTime,
-                $resultCode,
-                $callback->ResultDesc ?? '',
-                $checkoutRequestID
-            );
-            $stmt->execute();
-            $stmt->close();
-        }
-
-        // Fetch appointment_id linked to this payment
-        $row = getRow("SELECT appointment_id FROM payments WHERE checkout_request_id = ?", [$checkoutRequestID]);
-        $appointmentId = $row['appointment_id'] ?? null;
-
-        if ($appointmentId) {
-            // Update the appointments table — mark payment as Paid
-            $stmt2 = $conn->prepare("UPDATE appointments SET payment_status = 'Paid' WHERE id = ?");
-            if ($stmt2) {
-                $stmt2->bind_param("i", $appointmentId);
-                $stmt2->execute();
-                $stmt2->close();
-            }
-        }
-    } catch (Exception $e) {
-        file_put_contents('error_log.txt', "DB Error: " . $e->getMessage() . PHP_EOL, FILE_APPEND);
-    }
+    $status = 'COMPLETED';
 } else {
-    // Payment FAILED or CANCELLED
+    $status = 'FAILED';
+    $receiptNumber = null;
+}
+
+$stmt = $conn->prepare(
+    "UPDATE payments
+       SET status = ?,
+           mpesa_receipt_number = ?,
+           result_code = ?,
+           result_desc = ?,
+           updated_at = NOW()
+     WHERE checkout_request_id = ?"
+);
+
+if ($stmt) {
+    $stmt->bind_param(
+        "ssiss",
+        $status,
+        $receiptNumber,
+        $resultCode,
+        $resultDesc,
+        $checkoutRequestID
+    );
+    $stmt->execute();
+    $affected = $stmt->affected_rows;
+    $stmt->close();
+
     file_put_contents(
-        'error_log.txt',
-        date('Y-m-d H:i:s') . " - Payment FAILED: CheckoutRequestID=$checkoutRequestID ResultCode=$resultCode Desc=" . ($callback->ResultDesc ?? '') . PHP_EOL,
+        'callback_debug.log',
+        date('Y-m-d H:i:s') . " - DB Updated: $affected rows affected" . PHP_EOL,
         FILE_APPEND
     );
+}
 
-    try {
-        $stmt = $conn->prepare(
-            "UPDATE payments
-               SET status = 'FAILED',
-                   result_code = ?,
-                   result_desc = ?,
-                   updated_at = NOW()
-             WHERE checkout_request_id = ?"
-        );
-        if ($stmt) {
-            $stmt->bind_param(
-                "iss",
-                $resultCode,
-                $callback->ResultDesc ?? '',
-                $checkoutRequestID
-            );
-            $stmt->execute();
-            $stmt->close();
-        }
+// Update appointments table if linked
+$row = getRow("SELECT appointment_id FROM payments WHERE checkout_request_id = ?", [$checkoutRequestID]);
+$appointmentId = $row['appointment_id'] ?? null;
 
-        // Fetch appointment_id and reset payment status
-        $row = getRow("SELECT appointment_id FROM payments WHERE checkout_request_id = ?", [$checkoutRequestID]);
-        $appointmentId = $row['appointment_id'] ?? null;
-
-        if ($appointmentId) {
-            $stmt2 = $conn->prepare("UPDATE appointments SET payment_status = 'Unpaid' WHERE id = ?");
-            if ($stmt2) {
-                $stmt2->bind_param("i", $appointmentId);
-                $stmt2->execute();
-                $stmt2->close();
-            }
-        }
-    } catch (Exception $e) {
-        file_put_contents('error_log.txt', "DB Error: " . $e->getMessage() . PHP_EOL, FILE_APPEND);
+if ($appointmentId) {
+    if ($resultCode == 0) {
+        $stmt2 = $conn->prepare("UPDATE appointments SET payment_status = 'Paid' WHERE id = ?");
+    } else {
+        $stmt2 = $conn->prepare("UPDATE appointments SET payment_status = 'Unpaid' WHERE id = ?");
+    }
+    if ($stmt2) {
+        $stmt2->bind_param("i", $appointmentId);
+        $stmt2->execute();
+        $stmt2->close();
     }
 }
 
